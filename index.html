@@ -2,72 +2,127 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Calculador de Frete GO - Completo</title>
+    <title>Frete Express GO</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <style>
-        body { font-family: sans-serif; padding: 20px; max-width: 500px; margin: auto; background: #f8f9fa; }
-        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        body { font-family: 'Segoe UI', sans-serif; padding: 20px; max-width: 500px; margin: auto; background: #f0f2f5; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow: hidden; }
+        
+        /* Abas */
+        .tabs { display: flex; background: #e4e6eb; }
+        .tab { flex: 1; padding: 15px; text-align: center; cursor: pointer; font-weight: bold; color: #65676b; }
+        .tab.active { background: white; color: #007bff; border-bottom: 3px solid #007bff; }
+        
+        .content { padding: 20px; display: none; }
+        .content.active { display: block; }
+
         .campo { margin-bottom: 15px; }
-        label { font-weight: bold; font-size: 14px; display: block; margin-bottom: 5px; }
-        input, select, button { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        .grid-veiculos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
-        button { background: #007bff; color: white; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; }
-        button:hover { background: #0056b3; }
-        #resultado { margin-top: 20px; padding: 15px; background: #eef7ff; border-left: 5px solid #007bff; display: none; }
-        .res-item { display: flex; justify-content: space-between; border-bottom: 1px solid #ddd; padding: 5px 0; }
+        label { font-weight: bold; font-size: 13px; display: block; margin-bottom: 5px; color: #444; }
+        input, select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
+        
+        /* Resultados */
+        .res-card { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 15px; border: 1px solid #eee; }
+        .res-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+        .res-item:last-child { border: 0; }
+        .valor-frete { color: #28a745; font-weight: bold; }
+        .km-badge { background: #007bff; color: white; padding: 2px 8px; border-radius: 10px; font-size: 12px; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h2>🚚 Calculador de Frete</h2>
-
-    <div class="campo">
-        <label>Origem:</label>
-        <input type="text" id="origem" value="Senador Canedo">
+    <div class="tabs">
+        <div class="tab active" onclick="openTab('calc')">Calculadora</div>
+        <div class="tab" onclick="openTab('config')">Preços KM</div>
     </div>
 
-    <div class="campo">
-        <label>Destino (Goiás):</label>
-        <select id="listaDestino"><option>Carregando cidades...</option></select>
+    <div id="calc" class="content active">
+        <div class="campo">
+            <label>Origem:</label>
+            <input type="text" id="origem" value="Senador Canedo" oninput="calcular()">
+        </div>
+        <div class="campo">
+            <label>Destino (Goiás):</label>
+            <select id="listaDestino" onchange="calcular()">
+                <option>Carregando cidades...</option>
+            </select>
+        </div>
+
+        <div id="displayResultado" style="display:none;">
+            <p>Distância (Ida/Volta): <span id="kmTotal" class="km-badge">0 KM</span></p>
+            <div class="res-card">
+                <div class="res-item"><span>Toco (10m):</span> <span class="valor-frete" id="res_toco">R$ 0,00</span></div>
+                <div class="res-item"><span>Truck (15m):</span> <span class="valor-frete" id="res_truck">R$ 0,00</span></div>
+                <div class="res-item"><span>Bitruck (20m):</span> <span class="valor-frete" id="res_bitruck">R$ 0,00</span></div>
+                <div class="res-item"><span>Carreta (30m):</span> <span class="valor-frete" id="res_carreta">R$ 0,00</span></div>
+            </div>
+        </div>
     </div>
 
-    <hr>
-    <label>Valor do KM por Veículo (R$):</label>
-    <div class="grid-veiculos">
-        <div><label>Toco (10m)</label><input type="number" id="v_toco" value="2.50" step="0.10"></div>
-        <div><label>Truck (15m)</label><input type="number" id="v_truck" value="3.50" step="0.10"></div>
-        <div><label>Bitruck (20m)</label><input type="number" id="v_bitruck" value="4.50" step="0.10"></div>
-        <div><label>Carreta (30m)</label><input type="number" id="v_carreta" value="6.00" step="0.10"></div>
-    </div>
-
-    <button onclick="calcular()">CALCULAR VALORES</button>
-
-    <div id="resultado">
-        <p><strong>Distância total (Ida e Volta): <span id="kmTotal">0</span> KM</strong></p>
-        <div class="res-item"><span>Toco:</span> <strong id="res_toco">R$ 0,00</strong></div>
-        <div class="res-item"><span>Truck:</span> <strong id="res_truck">R$ 0,00</strong></div>
-        <div class="res-item"><span>Bitruck:</span> <strong id="res_bitruck">R$ 0,00</strong></div>
-        <div class="res-item"><span>Carreta:</span> <strong id="res_carreta">R$ 0,00</strong></div>
+    <div id="config" class="content">
+        <p style="font-size: 12px; color: #666;">Ajuste os valores por KM rodado (Ida + Volta):</p>
+        <div class="campo">
+            <label>Toco (R$)</label>
+            <input type="number" id="v_toco" value="2.50" step="0.01" oninput="salvarPrecos()">
+        </div>
+        <div class="campo">
+            <label>Truck (R$)</label>
+            <input type="number" id="v_truck" value="3.50" step="0.01" oninput="salvarPrecos()">
+        </div>
+        <div class="campo">
+            <label>Bitruck (R$)</label>
+            <input type="number" id="v_bitruck" value="4.50" step="0.01" oninput="salvarPrecos()">
+        </div>
+        <div class="campo">
+            <label>Carreta (R$)</label>
+            <input type="number" id="v_carreta" value="6.00" step="0.01" oninput="salvarPrecos()">
+        </div>
     </div>
 </div>
 
 <script>
     const urlCSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS-d_LpmN8-kbhIJsCur_ryTihieutK0R1GKnKAy8HtYMKUMW-49ID0YbXm3zju7ro09Uw3XWBulGV5/pub?gid=1728474295&single=true&output=csv';
     
+    // Carregar precos salvos
+    if(localStorage.getItem('precosFrete')) {
+        const salvos = JSON.parse(localStorage.getItem('precosFrete'));
+        document.getElementById('v_toco').value = salvos.toco;
+        document.getElementById('v_truck').value = salvos.truck;
+        document.getElementById('v_bitruck').value = salvos.bitruck;
+        document.getElementById('v_carreta').value = salvos.carreta;
+    }
+
+    function openTab(id) {
+        document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        event.currentTarget.classList.add('active');
+    }
+
+    function salvarPrecos() {
+        const dados = {
+            toco: document.getElementById('v_toco').value,
+            truck: document.getElementById('v_truck').value,
+            bitruck: document.getElementById('v_bitruck').value,
+            carreta: document.getElementById('v_carreta').value
+        };
+        localStorage.setItem('precosFrete', JSON.stringify(dados));
+        calcular();
+    }
+
     Papa.parse(urlCSV, {
         download: true,
         header: false,
         complete: function(results) {
-            let cidades = results.data.filter(linha => linha[0] && linha[1]);
-            cidades.sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+            let dados = results.data.slice(4).filter(l => l[0] && l[0].trim() !== "");
+            dados.sort((a, b) => a[0].trim().localeCompare(b[0].trim()));
 
             let select = document.getElementById('listaDestino');
             select.innerHTML = '<option value="">Selecione o destino...</option>';
-            cidades.forEach(linha => {
+            dados.forEach(linha => {
                 let opt = document.createElement('option');
-                opt.value = linha[1].replace(',', '.'); // Garante que a distância seja número
-                opt.innerHTML = linha[0];
+                opt.value = linha[1].toString().replace(',', '.');
+                opt.innerHTML = linha[0].trim();
                 select.appendChild(opt);
             });
         }
@@ -75,21 +130,22 @@
 
     function calcular() {
         const kmIda = parseFloat(document.getElementById('listaDestino').value);
-        if (!kmIda) { alert("Selecione um destino."); return; }
+        if (isNaN(kmIda)) {
+            document.getElementById('displayResultado').style.display = 'none';
+            return;
+        }
 
         const kmTotal = kmIda * 2;
-        document.getElementById('kmTotal').innerText = kmTotal.toFixed(2);
+        document.getElementById('kmTotal').innerText = kmTotal.toFixed(2) + " KM";
 
-        // Veículos
         const tipos = ['toco', 'truck', 'bitruck', 'carreta'];
-        
         tipos.forEach(tipo => {
             let precoKm = parseFloat(document.getElementById('v_' + tipo).value) || 0;
             let total = kmTotal * precoKm;
             document.getElementById('res_' + tipo).innerText = "R$ " + total.toLocaleString('pt-BR', {minimumFractionDigits: 2});
         });
 
-        document.getElementById('resultado').style.display = 'block';
+        document.getElementById('displayResultado').style.display = 'block';
     }
 </script>
 
