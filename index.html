@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Calculador de Frete - Senador Canedo</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <style>
+        body { font-family: sans-serif; padding: 20px; max-width: 400px; margin: auto; }
+        select, button { width: 100%; padding: 10px; margin-top: 10px; }
+        #resultado { margin-top: 20px; font-weight: bold; color: green; }
+    </style>
+</head>
+<body>
+    <h3>Cálculo de Frete (Origem: Senador Canedo)</h3>
+    <label>Selecione o Destino:</label>
+    <select id="municipios"><option>Carregando cidades...</option></select>
+    <button onclick="calcular()">Calcular Frete</button>
+    <div id="resultado"></div>
+
+    <script>
+        const urlCSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS-d_LpmN8-kbhIJsCur_ryTihieutK0R1GKnKAy8HtYMKUMW-49ID0YbXm3zju7ro09Uw3XWBulGV5/pub?gid=1728474295&single=true&output=csv'; // <--- COLE O LINK AQUI
+        let dadosFrete = [];
+
+        Papa.parse(urlCSV, {
+            download: true,
+            header: true,
+            complete: function(results) {
+                dadosFrete = results.data;
+                let select = document.getElementById('municipios');
+                select.innerHTML = '';
+                dadosFrete.forEach(item => {
+                    if(item.Municipio) { // Certifique-se que a coluna se chama 'Municipio'
+                        let opt = document.createElement('option');
+                        opt.value = item.Frete; // Certifique-se que a coluna se chama 'Frete'
+                        opt.innerHTML = item.Municipio;
+                        select.appendChild(opt);
+                    }
+                });
+            }
+        });
+
+        function calcular() {
+            let valor = document.getElementById('municipios').value;
+            document.getElementById('resultado').innerHTML = "Valor do Frete: R$ " + valor;
+        }
+    </script>
+</body>
+</html>
