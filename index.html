@@ -2,134 +2,167 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Sistema de Frete GO</title>
+    <title>Frete GO - Inteligente</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; padding: 20px; max-width: 550px; margin: auto; background: #f4f7f6; }
-        .card { background: white; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); padding: 20px; }
-        h2 { text-align: center; color: #333; font-size: 20px; margin-bottom: 20px; }
-        .campo { margin-bottom: 15px; }
-        label { font-weight: bold; font-size: 13px; display: block; margin-bottom: 5px; color: #666; }
-        select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 16px; background: #fff; }
-        .resultado-container { margin-top: 20px; display: none; border-top: 2px solid #eee; padding-top: 15px; }
-        .km-info { text-align: center; margin-bottom: 15px; font-weight: bold; color: #007bff; background: #eef7ff; padding: 8px; border-radius: 5px; }
-        .res-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
-        .res-item:last-child { border: 0; }
-        .label-veiculo { color: #555; font-size: 14px; flex: 1; }
-        .valores { text-align: right; flex: 2; }
-        .valor-final { font-weight: bold; color: #28a745; font-size: 17px; }
-        .valor-litro { color: #666; font-size: 13px; margin-left: 8px; font-style: italic; }
+        body { font-family: 'Segoe UI', sans-serif; padding: 10px; max-width: 600px; margin: auto; background: #f0f2f5; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow: hidden; }
+        .tabs { display: flex; background: #e4e6eb; }
+        .tab { flex: 1; padding: 15px; text-align: center; cursor: pointer; font-weight: bold; color: #65676b; }
+        .tab.active { background: white; color: #007bff; border-bottom: 3px solid #007bff; }
+        .content { padding: 20px; display: none; }
+        .content.active { display: block; }
+        
+        #map { height: 300px; width: 100%; border-radius: 8px; margin-top: 15px; z-index: 1; }
+        
+        .campo { margin-bottom: 12px; }
+        label { font-weight: bold; font-size: 13px; display: block; margin-bottom: 4px; }
+        select, input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+        
+        .grid-precos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: #f8f9fa; padding: 10px; border-radius: 8px; margin-bottom: 15px; }
+        .res-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+        .valor-final { font-weight: bold; color: #28a745; }
+        .km-destaque { color: #007bff; font-weight: bold; text-align: center; display: block; margin: 10px 0; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h2>🚚 Frete Senador Canedo</h2>
-
-    <div class="campo">
-        <label>Cidade de Destino:</label>
-        <select id="listaDestino" onchange="mostrarFrete()">
-            <option>Carregando cidades...</option>
-        </select>
+    <div class="tabs">
+        <div class="tab active" onclick="openTab('abaCidades')">Por Cidade</div>
+        <div class="tab" onclick="openTab('abaMapa')">Por Mapa/KM</div>
     </div>
 
-    <div id="resultado" class="resultado-container">
-        <div class="km-info">
-            Distância Total: <span id="txtKm">0</span> KM (Ida e Volta)
+    <div id="abaCidades" class="content active">
+        <label>Cidade de Destino (Planilha):</label>
+        <select id="listaDestino" onchange="calcPlanilha()"><option>Carregando...</option></select>
+        <div id="resPlanilha" style="display:none">
+            <span class="km-destaque">Distância: <span id="kmP">0</span> KM (Ida/Volta)</span>
+            <div id="listaFretesP"></div>
+            <div id="mapP" style="height: 200px; margin-top:10px; border-radius:8px;"></div>
         </div>
-        
-        <div class="res-item">
-            <span class="label-veiculo">Toco (10m):</span>
-            <div class="valores">
-                <span class="valor-final" id="res_toco">R$ 0,00</span>
-                <span class="valor-litro" id="litro_toco"></span>
-            </div>
+    </div>
+
+    <div id="abaMapa" class="content">
+        <label>Preço por KM rodado (Ida + Volta):</label>
+        <div class="grid-precos">
+            <div><label>Toco</label><input type="number" id="m_toco" value="2.50" oninput="calcRota()"></div>
+            <div><label>Truck</label><input type="number" id="m_truck" value="3.50" oninput="calcRota()"></div>
+            <div><label>Bitruck</label><input type="number" id="m_bitruck" value="4.50" oninput="calcRota()"></div>
+            <div><label>Carreta</label><input type="number" id="m_carreta" value="6.00" oninput="calcRota()"></div>
         </div>
-        <div class="res-item">
-            <span class="label-veiculo">Truck (15m):</span>
-            <div class="valores">
-                <span class="valor-final" id="res_truck">R$ 0,00</span>
-                <span class="valor-litro" id="litro_truck"></span>
-            </div>
-        </div>
-        <div class="res-item">
-            <span class="label-veiculo">Bitruck (20m):</span>
-            <div class="valores">
-                <span class="valor-final" id="res_bitruck">R$ 0,00</span>
-                <span class="valor-litro" id="litro_bitruck"></span>
-            </div>
-        </div>
-        <div class="res-item">
-            <span class="label-veiculo">Carreta (30m):</span>
-            <div class="valores">
-                <span class="valor-final" id="res_carreta">R$ 0,00</span>
-                <span class="valor-litro" id="litro_carreta"></span>
-            </div>
+        <p style="font-size:11px; color:red">Clique no mapa para definir o destino:</p>
+        <div id="map" onclick="calcRota()"></div>
+        <div id="resMapa" style="display:none">
+            <span class="km-destaque">Rota Rápida: <span id="kmM">0</span> KM (Ida/Volta)</span>
+            <div id="listaFretesM"></div>
         </div>
     </div>
 </div>
 
 <script>
     const urlCSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS-d_LpmN8-kbhIJsCur_ryTihieutK0R1GKnKAy8HtYMKUMW-49ID0YbXm3zju7ro09Uw3XWBulGV5/pub?gid=1728474295&single=true&output=csv';
+    const origemCoord = [-16.7111, -49.1136]; // Senador Canedo
     let bancoDados = [];
+    let map, mapP, markerM, polylineM, polylineP;
 
+    // Inicializa Mapas
+    function initMaps() {
+        map = L.map('map').setView(origemCoord, 8);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        L.marker(origemCoord).addTo(map).bindPopup("Origem: Senador Canedo");
+        
+        map.on('click', function(e) {
+            if(markerM) map.removeLayer(markerM);
+            markerM = L.marker(e.latlng).addTo(map);
+            obterRota(e.latlng.lat, e.latlng.lng);
+        });
+
+        mapP = L.map('mapP').setView(origemCoord, 7);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapP);
+    }
+
+    function openTab(id) {
+        document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        event.currentTarget.classList.add('active');
+        setTimeout(() => { map.invalidateSize(); mapP.invalidateSize(); }, 200);
+    }
+
+    // Carregar Planilha
     Papa.parse(urlCSV, {
         download: true,
         header: false,
         complete: function(results) {
-            bancoDados = results.data.slice(3).filter(l => l[0] && l[0].trim() !== "");
+            bancoDados = results.data.slice(3).filter(l => l[0]);
             bancoDados.sort((a, b) => a[0].trim().localeCompare(b[0].trim()));
-
             let select = document.getElementById('listaDestino');
-            select.innerHTML = '<option value="">Selecione o destino...</option>';
-            bancoDados.forEach((linha, index) => {
+            select.innerHTML = '<option value="">Selecione...</option>';
+            bancoDados.forEach((l, i) => {
                 let opt = document.createElement('option');
-                opt.value = index; 
-                opt.innerHTML = linha[0].trim();
+                opt.value = i; opt.innerHTML = l[0];
                 select.appendChild(opt);
             });
         }
     });
 
-    function formatarMoeda(valor) {
-        if(!valor) return "R$ 0,00";
-        let n = parseFloat(valor.toString().replace(/\./g, '').replace(',', '.')) || 0;
-        return "R$ " + n.toLocaleString('pt-BR', {minimumFractionDigits: 2});
-    }
-
-    function formatarLitro(valor) {
-        if(!valor) return "(R$ 0,000/L)";
-        let n = parseFloat(valor.toString().replace(/\./g, '').replace(',', '.')) || 0;
-        return "(R$ " + n.toLocaleString('pt-BR', {minimumFractionDigits: 3, maximumFractionDigits: 3}) + "/L)";
-    }
-
-    function mostrarFrete() {
-        const index = document.getElementById('listaDestino').value;
-        const container = document.getElementById('resultado');
-
-        if (index === "") {
-            container.style.display = 'none';
-            return;
+    async function obterRota(lat, lng) {
+        const url = `https://router.project-osrm.org/route/v1/driving/${origemCoord[1]},${origemCoord[0]};${lng},${lat}?overview=full&geometries=geojson`;
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if(data.routes && data.routes[0]) {
+            const distKm = (data.routes[0].distance / 1000) * 2; // Ida e Volta
+            desenharRota(data.routes[0].geometry, distKm);
         }
-
-        const d = bancoDados[index];
-        const kmIda = parseFloat(d[1].toString().replace(',', '.')) || 0;
-        document.getElementById('txtKm').innerText = (kmIda * 2).toLocaleString('pt-BR');
-
-        // Valores de Frete (Colunas C, D, E, F -> índices 2, 3, 4, 5)
-        document.getElementById('res_toco').innerText = formatarMoeda(d[2]);
-        document.getElementById('res_truck').innerText = formatarMoeda(d[3]);
-        document.getElementById('res_bitruck').innerText = formatarMoeda(d[4]);
-        document.getElementById('res_carreta').innerText = formatarMoeda(d[5]);
-
-        // Valores por Litro (Colunas G, H, I, J -> índices 6, 7, 8, 9)
-        document.getElementById('litro_toco').innerText = formatarLitro(d[6]);
-        document.getElementById('litro_truck').innerText = formatarLitro(d[7]);
-        document.getElementById('litro_bitruck').innerText = formatarLitro(d[8]);
-        document.getElementById('litro_carreta').innerText = formatarLitro(d[9]);
-
-        container.style.display = 'block';
     }
+
+    function desenharRota(geo, km) {
+        if(polylineM) map.removeLayer(polylineM);
+        polylineM = L.geoJSON(geo, {color: 'blue'}).addTo(map);
+        document.getElementById('kmM').innerText = km.toFixed(2);
+        
+        let html = '';
+        ['toco', 'truck', 'bitruck', 'carreta'].forEach(t => {
+            let preco = parseFloat(document.getElementById('m_'+t).value) * km;
+            // Arredondar para teto de 100
+            preco = Math.ceil(preco / 100) * 100;
+            html += `<div class="res-item"><span>${t.toUpperCase()}</span><span class="valor-final">R$ ${preco.toLocaleString('pt-BR')}</span></div>`;
+        });
+        document.getElementById('listaFretesM').innerHTML = html;
+        document.getElementById('resMapa').style.display = 'block';
+    }
+
+    function calcPlanilha() {
+        const i = document.getElementById('listaDestino').value;
+        if(i === "") return;
+        const d = bancoDados[i];
+        const kmTotal = (parseFloat(d[1].replace(',', '.')) || 0) * 2;
+        document.getElementById('kmP').innerText = kmTotal.toFixed(2);
+        
+        let html = '';
+        const veiculos = ['Toco', 'Truck', 'Bitruck', 'Carreta'];
+        [2,3,4,5].forEach((col, idx) => {
+            html += `<div class="res-item"><span>${veiculos[idx]}</span><span class="valor-final">${d[col]}</span></div>`;
+        });
+        document.getElementById('listaFretesP').innerHTML = html;
+        document.getElementById('resPlanilha').style.display = 'block';
+        
+        // Simular rota no mapa da planilha (puxando geocodificação simples)
+        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${d[0]}, Goias`)
+        .then(r => r.json()).then(data => {
+            if(data[0]) {
+                const lat = data[0].lat, lon = data[0].lon;
+                mapP.setView([lat, lon], 8);
+                L.marker([lat, lon]).addTo(mapP);
+            }
+        });
+    }
+
+    window.onload = initMaps;
 </script>
 
 </body>
