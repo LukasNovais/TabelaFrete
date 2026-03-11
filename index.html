@@ -2,47 +2,96 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Calculador de Frete - Senador Canedo</title>
+    <title>Calculador de Frete GO - Completo</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <style>
-        body { font-family: sans-serif; padding: 20px; max-width: 400px; margin: auto; }
-        select, button { width: 100%; padding: 10px; margin-top: 10px; }
-        #resultado { margin-top: 20px; font-weight: bold; color: green; }
+        body { font-family: sans-serif; padding: 20px; max-width: 500px; margin: auto; background: #f8f9fa; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .campo { margin-bottom: 15px; }
+        label { font-weight: bold; font-size: 14px; display: block; margin-bottom: 5px; }
+        input, select, button { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .grid-veiculos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        button { background: #007bff; color: white; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        button:hover { background: #0056b3; }
+        #resultado { margin-top: 20px; padding: 15px; background: #eef7ff; border-left: 5px solid #007bff; display: none; }
+        .res-item { display: flex; justify-content: space-between; border-bottom: 1px solid #ddd; padding: 5px 0; }
     </style>
 </head>
 <body>
-    <h3>Cálculo de Frete (Origem: Senador Canedo)</h3>
-    <label>Selecione o Destino:</label>
-    <select id="municipios"><option>Carregando cidades...</option></select>
-    <button onclick="calcular()">Calcular Frete</button>
-    <div id="resultado"></div>
 
-    <script>
-        const urlCSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS-d_LpmN8-kbhIJsCur_ryTihieutK0R1GKnKAy8HtYMKUMW-49ID0YbXm3zju7ro09Uw3XWBulGV5/pub?gid=1728474295&single=true&output=csv'; // <--- COLE O LINK AQUI
-        let dadosFrete = [];
+<div class="card">
+    <h2>🚚 Calculador de Frete</h2>
 
-        Papa.parse(urlCSV, {
-            download: true,
-            header: true,
-            complete: function(results) {
-                dadosFrete = results.data;
-                let select = document.getElementById('municipios');
-                select.innerHTML = '';
-                dadosFrete.forEach(item => {
-                    if(item.Municipio) { // Certifique-se que a coluna se chama 'Municipio'
-                        let opt = document.createElement('option');
-                        opt.value = item.Frete; // Certifique-se que a coluna se chama 'Frete'
-                        opt.innerHTML = item.Municipio;
-                        select.appendChild(opt);
-                    }
-                });
-            }
+    <div class="campo">
+        <label>Origem:</label>
+        <input type="text" id="origem" value="Senador Canedo">
+    </div>
+
+    <div class="campo">
+        <label>Destino (Goiás):</label>
+        <select id="listaDestino"><option>Carregando cidades...</option></select>
+    </div>
+
+    <hr>
+    <label>Valor do KM por Veículo (R$):</label>
+    <div class="grid-veiculos">
+        <div><label>Toco (10m)</label><input type="number" id="v_toco" value="2.50" step="0.10"></div>
+        <div><label>Truck (15m)</label><input type="number" id="v_truck" value="3.50" step="0.10"></div>
+        <div><label>Bitruck (20m)</label><input type="number" id="v_bitruck" value="4.50" step="0.10"></div>
+        <div><label>Carreta (30m)</label><input type="number" id="v_carreta" value="6.00" step="0.10"></div>
+    </div>
+
+    <button onclick="calcular()">CALCULAR VALORES</button>
+
+    <div id="resultado">
+        <p><strong>Distância total (Ida e Volta): <span id="kmTotal">0</span> KM</strong></p>
+        <div class="res-item"><span>Toco:</span> <strong id="res_toco">R$ 0,00</strong></div>
+        <div class="res-item"><span>Truck:</span> <strong id="res_truck">R$ 0,00</strong></div>
+        <div class="res-item"><span>Bitruck:</span> <strong id="res_bitruck">R$ 0,00</strong></div>
+        <div class="res-item"><span>Carreta:</span> <strong id="res_carreta">R$ 0,00</strong></div>
+    </div>
+</div>
+
+<script>
+    const urlCSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS-d_LpmN8-kbhIJsCur_ryTihieutK0R1GKnKAy8HtYMKUMW-49ID0YbXm3zju7ro09Uw3XWBulGV5/pub?gid=1728474295&single=true&output=csv';
+    
+    Papa.parse(urlCSV, {
+        download: true,
+        header: false,
+        complete: function(results) {
+            let cidades = results.data.filter(linha => linha[0] && linha[1]);
+            cidades.sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+
+            let select = document.getElementById('listaDestino');
+            select.innerHTML = '<option value="">Selecione o destino...</option>';
+            cidades.forEach(linha => {
+                let opt = document.createElement('option');
+                opt.value = linha[1].replace(',', '.'); // Garante que a distância seja número
+                opt.innerHTML = linha[0];
+                select.appendChild(opt);
+            });
+        }
+    });
+
+    function calcular() {
+        const kmIda = parseFloat(document.getElementById('listaDestino').value);
+        if (!kmIda) { alert("Selecione um destino."); return; }
+
+        const kmTotal = kmIda * 2;
+        document.getElementById('kmTotal').innerText = kmTotal.toFixed(2);
+
+        // Veículos
+        const tipos = ['toco', 'truck', 'bitruck', 'carreta'];
+        
+        tipos.forEach(tipo => {
+            let precoKm = parseFloat(document.getElementById('v_' + tipo).value) || 0;
+            let total = kmTotal * precoKm;
+            document.getElementById('res_' + tipo).innerText = "R$ " + total.toLocaleString('pt-BR', {minimumFractionDigits: 2});
         });
 
-        function calcular() {
-            let valor = document.getElementById('municipios').value;
-            document.getElementById('resultado').innerHTML = "Valor do Frete: R$ " + valor;
-        }
-    </script>
+        document.getElementById('resultado').style.display = 'block';
+    }
+</script>
+
 </body>
 </html>
