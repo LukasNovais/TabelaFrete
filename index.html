@@ -5,31 +5,26 @@
     <title>Sistema de Frete GO</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; padding: 20px; max-width: 450px; margin: auto; background: #f4f7f6; }
+        body { font-family: 'Segoe UI', sans-serif; padding: 20px; max-width: 550px; margin: auto; background: #f4f7f6; }
         .card { background: white; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); padding: 20px; }
         h2 { text-align: center; color: #333; font-size: 20px; margin-bottom: 20px; }
         .campo { margin-bottom: 15px; }
         label { font-weight: bold; font-size: 13px; display: block; margin-bottom: 5px; color: #666; }
-        input, select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 16px; background: #fff; }
-        input[readonly] { background: #eee; cursor: not-allowed; }
-        
+        select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 16px; background: #fff; }
         .resultado-container { margin-top: 20px; display: none; border-top: 2px solid #eee; padding-top: 15px; }
         .km-info { text-align: center; margin-bottom: 15px; font-weight: bold; color: #007bff; background: #eef7ff; padding: 8px; border-radius: 5px; }
-        .res-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
+        .res-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
         .res-item:last-child { border: 0; }
-        .label-veiculo { color: #555; }
-        .valor-final { font-weight: bold; color: #28a745; font-size: 18px; }
+        .label-veiculo { color: #555; font-size: 14px; flex: 1; }
+        .valores { text-align: right; flex: 2; }
+        .valor-final { font-weight: bold; color: #28a745; font-size: 17px; }
+        .valor-litro { color: #666; font-size: 13px; margin-left: 8px; font-style: italic; }
     </style>
 </head>
 <body>
 
 <div class="card">
     <h2>🚚 Frete Senador Canedo</h2>
-
-    <div class="campo">
-        <label>Origem:</label>
-        <input type="text" id="origem" value="Senador Canedo" readonly>
-    </div>
 
     <div class="campo">
         <label>Cidade de Destino:</label>
@@ -45,39 +40,48 @@
         
         <div class="res-item">
             <span class="label-veiculo">Toco (10m):</span>
-            <span class="valor-final" id="res_toco">R$ 0,00</span>
+            <div class="valores">
+                <span class="valor-final" id="res_toco">R$ 0,00</span>
+                <span class="valor-litro" id="litro_toco"></span>
+            </div>
         </div>
         <div class="res-item">
             <span class="label-veiculo">Truck (15m):</span>
-            <span class="valor-final" id="res_truck">R$ 0,00</span>
+            <div class="valores">
+                <span class="valor-final" id="res_truck">R$ 0,00</span>
+                <span class="valor-litro" id="litro_truck"></span>
+            </div>
         </div>
         <div class="res-item">
             <span class="label-veiculo">Bitruck (20m):</span>
-            <span class="valor-final" id="res_bitruck">R$ 0,00</span>
+            <div class="valores">
+                <span class="valor-final" id="res_bitruck">R$ 0,00</span>
+                <span class="valor-litro" id="litro_bitruck"></span>
+            </div>
         </div>
         <div class="res-item">
             <span class="label-veiculo">Carreta (30m):</span>
-            <span class="valor-final" id="res_carreta">R$ 0,00</span>
+            <div class="valores">
+                <span class="valor-final" id="res_carreta">R$ 0,00</span>
+                <span class="valor-litro" id="litro_carreta"></span>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
     const urlCSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS-d_LpmN8-kbhIJsCur_ryTihieutK0R1GKnKAy8HtYMKUMW-49ID0YbXm3zju7ro09Uw3XWBulGV5/pub?gid=1728474295&single=true&output=csv';
-    
     let bancoDados = [];
 
     Papa.parse(urlCSV, {
         download: true,
         header: false,
         complete: function(results) {
-            // Pula 3 linhas e começa na 4 (índice 3)
             bancoDados = results.data.slice(3).filter(l => l[0] && l[0].trim() !== "");
             bancoDados.sort((a, b) => a[0].trim().localeCompare(b[0].trim()));
 
             let select = document.getElementById('listaDestino');
             select.innerHTML = '<option value="">Selecione o destino...</option>';
-            
             bancoDados.forEach((linha, index) => {
                 let opt = document.createElement('option');
                 opt.value = index; 
@@ -86,6 +90,18 @@
             });
         }
     });
+
+    function formatarMoeda(valor) {
+        if(!valor) return "R$ 0,00";
+        let n = parseFloat(valor.toString().replace(/\./g, '').replace(',', '.')) || 0;
+        return "R$ " + n.toLocaleString('pt-BR', {minimumFractionDigits: 2});
+    }
+
+    function formatarLitro(valor) {
+        if(!valor) return "(R$ 0,000/L)";
+        let n = parseFloat(valor.toString().replace(/\./g, '').replace(',', '.')) || 0;
+        return "(R$ " + n.toLocaleString('pt-BR', {minimumFractionDigits: 3, maximumFractionDigits: 3}) + "/L)";
+    }
 
     function mostrarFrete() {
         const index = document.getElementById('listaDestino').value;
@@ -96,21 +112,21 @@
             return;
         }
 
-        const dadosCidade = bancoDados[index];
-        const kmIda = parseFloat(dadosCidade[1].toString().replace(',', '.')) || 0;
+        const d = bancoDados[index];
+        const kmIda = parseFloat(d[1].toString().replace(',', '.')) || 0;
         document.getElementById('txtKm').innerText = (kmIda * 2).toLocaleString('pt-BR');
 
-        const formatar = (valor) => {
-            if(!valor) return "R$ 0,00";
-            // Remove pontos de milhar e converte vírgula decimal
-            let n = parseFloat(valor.toString().replace(/\./g, '').replace(',', '.')) || 0;
-            return "R$ " + n.toLocaleString('pt-BR', {minimumFractionDigits: 2});
-        };
+        // Valores de Frete (Colunas C, D, E, F -> índices 2, 3, 4, 5)
+        document.getElementById('res_toco').innerText = formatarMoeda(d[2]);
+        document.getElementById('res_truck').innerText = formatarMoeda(d[3]);
+        document.getElementById('res_bitruck').innerText = formatarMoeda(d[4]);
+        document.getElementById('res_carreta').innerText = formatarMoeda(d[5]);
 
-        document.getElementById('res_toco').innerText = formatar(dadosCidade[2]);
-        document.getElementById('res_truck').innerText = formatar(dadosCidade[3]);
-        document.getElementById('res_bitruck').innerText = formatar(dadosCidade[4]);
-        document.getElementById('res_carreta').innerText = formatar(dadosCidade[5]);
+        // Valores por Litro (Colunas G, H, I, J -> índices 6, 7, 8, 9)
+        document.getElementById('litro_toco').innerText = formatarLitro(d[6]);
+        document.getElementById('litro_truck').innerText = formatarLitro(d[7]);
+        document.getElementById('litro_bitruck').innerText = formatarLitro(d[8]);
+        document.getElementById('litro_carreta').innerText = formatarLitro(d[9]);
 
         container.style.display = 'block';
     }
