@@ -71,10 +71,10 @@
         download: true,
         header: false,
         complete: function(results) {
-            // Pula as 2 primeiras linhas (0 e 1) e começa da 3ª (índice 2)
-            bancoDados = results.data.slice(2).filter(l => l[0] && l[0].trim() !== "");
+            // Pula as 3 primeiras linhas (0, 1 e 2) e começa da 4ª (índice 3)
+            bancoDados = results.data.slice(3).filter(l => l[0] && l[0].trim() !== "");
             
-            // Organiza em ordem alfabética pelo nome da cidade
+            // Organiza em ordem alfabética
             bancoDados.sort((a, b) => a[0].trim().localeCompare(b[0].trim()));
 
             let select = document.getElementById('listaDestino');
@@ -100,14 +100,15 @@
 
         const dadosCidade = bancoDados[index];
         
-        // KM Ida (Coluna B) multiplicado por 2
+        // Coluna B: KM (Índice 1) multiplicado por 2
         const kmIda = parseFloat(dadosCidade[1].toString().replace(',', '.')) || 0;
         document.getElementById('txtKm').innerText = (kmIda * 2).toLocaleString('pt-BR');
 
-        // Formatação de Moeda para as colunas C, D, E e F
+        // Formatação de Moeda para Colunas C, D, E, F
         const formatar = (valor) => {
             if(!valor) return "R$ 0,00";
-            let n = parseFloat(valor.toString().replace('.', '').replace(',', '.')) || 0;
+            // Limpa pontos de milhar se houver e troca vírgula por ponto para o cálculo
+            let n = parseFloat(valor.toString().replace(/\./g, '').replace(',', '.')) || 0;
             return "R$ " + n.toLocaleString('pt-BR', {minimumFractionDigits: 2});
         };
 
