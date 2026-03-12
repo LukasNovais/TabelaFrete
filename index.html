@@ -21,7 +21,7 @@
         .valor-final { font-weight: bold; color: #28a745; font-size: 16px; }
         .valor-litro { color: #666; font-size: 12px; font-style: italic; margin-left: 5px; }
         .km-destaque { color: #007bff; font-weight: bold; text-align: center; display: block; margin: 10px 0; background: #eef7ff; padding: 5px; border-radius: 5px; }
-        .mapa { height: 250px; width: 100%; border-radius: 8px; margin-top: 10px; border: 1px solid #ccc; }
+        .mapa { height: 300px; width: 100%; border-radius: 8px; margin-top: 10px; border: 1px solid #ccc; background: #eee; }
     </style>
 </head>
 <body>
@@ -64,7 +64,6 @@
     const origemCoord = [-16.7014123, -49.1130296];
     let bancoDados = [], precosKm = {};
     let mapP, mapM, polyP, polyM, markerP, markerM;
-
     const volumes = { toco: 10000, truck: 15000, bitruck: 20000, carreta: 30000 };
 
     function openTab(id) {
@@ -74,26 +73,22 @@
         setTimeout(() => { 
             if(mapP) mapP.invalidateSize(); 
             if(mapM) mapM.invalidateSize(); 
-        }, 200);
+        }, 300);
     }
 
-    // Carregar Planilha
     Papa.parse(urlCSV, {
         download: true,
         header: false,
         complete: function(results) {
             const linhas = results.data;
-            // Pega precos por KM na Linha 2 (índice 1)
             precosKm = {
                 toco: parseFloat(linhas[1][2].replace(',', '.')),
                 truck: parseFloat(linhas[1][3].replace(',', '.')),
-                bitruck: parseFloat(linhas[1][2].replace(',', '.')), // C2 conforme pedido
-                carreta: parseFloat(linhas[1][3].replace(',', '.'))  // D2 conforme pedido
+                bitruck: parseFloat(linhas[1][2].replace(',', '.')),
+                carreta: parseFloat(linhas[1][3].replace(',', '.'))
             };
-
             bancoDados = linhas.slice(3).filter(l => l[0]);
             bancoDados.sort((a, b) => a[0].trim().localeCompare(b[0].trim()));
-            
             let select = document.getElementById('listaDestino');
             select.innerHTML = '<option value="">Selecione...</option>';
             bancoDados.forEach((l, i) => {
@@ -106,32 +101,38 @@
     });
 
     function initMaps() {
-        mapP = L.map('mapP').setView(origemCoord, 8);
+        const config = { zoomControl: true, attributionControl: false };
+        mapP = L.map('mapP', config).setView(origemCoord, 7);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapP);
         L.marker(origemCoord).addTo(mapP);
 
-        mapM = L.map('mapM').setView(origemCoord, 8);
+        mapM = L.map('mapM', config).setView(origemCoord, 7);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapM);
         L.marker(origemCoord).addTo(mapM);
     }
 
     async function getRoute(mapObj, polyObj, markerObj, start, end, callback) {
+        // Perfil 'driving' do OSRM prioriza rodovias principais
         const url = `https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${end[1]},${end[0]}?overview=full&geometries=geojson`;
         try {
             const response = await fetch(url);
             const data = await response.json();
             if(data.routes && data.routes[0]) {
-                if(polyObj) mapObj.removeLayer(polyObj);
-                if(markerObj) mapObj.removeLayer(markerObj);
-                const poly = L.geoJSON(data.routes[0].geometry, {color: '#007bff'}).addTo(mapObj);
+                if(polyObj && mapObj.hasLayer(polyObj)) mapObj.removeLayer(polyObj);
+                if(markerObj && mapObj.hasLayer(markerObj)) mapObj.removeLayer(markerObj);
+                
+                const poly = L.geoJSON(data.routes[0].geometry, {color: '#007bff', weight: 5}).addTo(mapObj);
                 const mark = L.marker(end).addTo(mapObj);
-                mapObj.fitBounds(poly.getBounds(), {padding: [20,20]});
+                
+                // AJUSTE DE ZOOM: Enquadra a rota inteira na tela
+                mapObj.fitBounds(poly.getBounds(), {padding: [40, 40]});
+                
                 callback((data.routes[0].distance / 1000) * 2, poly, mark);
             }
         } catch (e) { console.error("Erro na rota."); }
     }
 
-    const formatM = (v) => "R$ " + v.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    const formatM = (v) => "R$ " + v.toLocaleString('pt-BR', {minimumFractionDigits: 2});
     const formatL = (v) => "(R$ " + v.toLocaleString('pt-BR', {minimumFractionDigits: 3, maximumFractionDigits: 3}) + "/L)";
 
     function calcPlanilha() {
@@ -139,7 +140,6 @@
         if(i === "") return;
         const d = bancoDados[i];
         const kmIda = parseFloat(d[1].replace(',', '.'));
-        
         document.getElementById('kmP').innerText = (kmIda * 2).toFixed(2);
         
         let html = '';
@@ -154,7 +154,11 @@
 
         fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${d[0]}, Goias`)
             .then(r => r.json()).then(data => {
-                if(data[0]) getRoute(mapP, polyP, markerP, origemCoord, [data[0].lat, data[0].lon], (km, p, m) => { polyP = p; markerP = m; });
+                if(data[0]) {
+                    setTimeout(() => {
+                        getRoute(mapP, polyP, markerP, origemCoord, [data[0].lat, data[0].lon], (km, p, m) => { polyP = p; markerP = m; });
+                    }, 100);
+                }
             });
     }
 
