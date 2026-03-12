@@ -47,13 +47,13 @@
         select, input { 
             width: 100%; padding: 14px; border: 1.5px solid var(--border); 
             border-radius: 12px; font-size: 16px; background: #fafafa;
-            margin-bottom: 12px; box-sizing: border-box; transition: border-color 0.2s;
+            margin-bottom: 12px; box-sizing: border-box;
         }
 
         .destino-item { 
             display: flex; gap: 8px; align-items: center; background: #fff; 
             padding: 10px; border: 1px solid var(--border); border-radius: 14px; 
-            margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            margin-bottom: 10px;
         }
         .ponto-letra {
             background: var(--primary); color: white; border-radius: 50%;
@@ -71,37 +71,41 @@
 
         .btn-remove { 
             background: #fff0f0; color: #ff4444; border: none;
-            border-radius: 10px; width: 40px; height: 40px; cursor: pointer; font-size: 18px;
+            border-radius: 10px; width: 40px; height: 40px; cursor: pointer;
         }
 
         .btn-add { 
             background: var(--primary); color: white; border: none; border-radius: 14px; 
             padding: 16px; width: 100%; font-size: 16px; font-weight: 700;
-            cursor: pointer; margin: 10px 0 20px 0; box-shadow: 0 4px 12px rgba(0,123,255,0.3);
+            cursor: pointer; margin: 10px 0 20px 0;
         }
 
-        .mapa { height: 280px; width: 100%; border-radius: 16px; margin-top: 15px; border: 1px solid var(--border); background: #f8f9fa; }
+        .mapa { height: 280px; width: 100%; border-radius: 16px; margin-top: 5px; border: 1px solid var(--border); background: #ddd; position: relative; }
         
+        /* TEXTO DE CARREGAMENTO */
+        .loading-text {
+            color: var(--primary); font-size: 13px; font-weight: 700; text-align: center;
+            margin-bottom: 5px; display: none; animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
+
         .km-destaque { 
             color: var(--primary); font-weight: 800; text-align: center; display: block; 
             padding: 14px; background: #eef7ff; border-radius: 14px; margin: 15px 0; font-size: 16px;
         }
 
         .res-item { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid #f0f0f0; }
-        .res-item:last-child { border-bottom: none; }
         
         .veiculo-nome { font-weight: 600; color: #444; font-size: 15px; }
         .valor-final { font-weight: 800; color: var(--success); font-size: 18px; display: block; }
-        .valor-litro { color: var(--text-light); font-size: 12px; font-weight: 500; }
 
         .custom-div-icon {
             background: var(--primary); border: 2px solid white; border-radius: 50%;
             color: white; font-weight: bold; text-align: center; line-height: 20px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
         }
 
         @media (min-width: 601px) {
-            body { padding: 40px 20px; }
             .card { border-radius: 20px; }
             .mapa { height: 350px; }
         }
@@ -122,6 +126,7 @@
             <div id="resPlanilha" style="display:none">
                 <span class="km-destaque">Total: <span id="kmP">0</span> KM</span>
                 <div id="listaFretesP"></div>
+                <div id="loadP" class="loading-text">Carregando rota, aguarde!</div>
                 <div id="mapP" class="mapa"></div>
             </div>
         </div>
@@ -133,6 +138,7 @@
             <div id="resMapa" style="display:none">
                 <span class="km-destaque">Distância: <span id="kmM">0</span> KM</span>
                 <div id="listaFretesM"></div>
+                <div id="loadM" class="loading-text">Carregando rota, aguarde!</div>
                 <div id="mapM" class="mapa"></div>
             </div>
         </div>
@@ -169,7 +175,7 @@
             <span class="handle">☰</span>
             <span class="ponto-letra"></span>
             <input type="text" placeholder="Nome ou Lat, Long" oninput="calcMultiRota()" list="destinosSalvos">
-            <button class="btn-save" onclick="salvarNoHistorico(this)" title="Salvar">💾</button>
+            <button class="btn-save" onclick="salvarNoHistorico(this)">💾</button>
             <button class="btn-remove" onclick="this.parentElement.remove(); atualizarLetras(); calcMultiRota();">✕</button>
         `;
         container.appendChild(div);
@@ -227,112 +233,91 @@
         const input = btn.parentElement.querySelector('input');
         const valor = tratarCoordenada(input.value);
         if (!valor || valor.split(',').length < 2) { alert("Coordenada inválida."); return; }
-        const nome = prompt("Nome para este destino:");
-        if (nome) {
-            alert(`Adicione na planilha 'Historico':\nNome: ${nome}\nCoordenada: ${valor}`);
-            window.open('https://docs.google.com/spreadsheets/d/1vS-d_LpmN8-kbhIJsCur_ryTihieutK0R1GKnKAy8HtYMKUMW-49ID0YbXm3zju7ro09Uw3XWBulGV5/edit#gid=219014695', '_blank');
-        }
+        window.open('https://docs.google.com/spreadsheets/d/1vS-d_LpmN8-kbhIJsCur_ryTihieutK0R1GKnKAy8HtYMKUMW-49ID0YbXm3zju7ro09Uw3XWBulGV5/edit#gid=219014695', '_blank');
     }
 
-    // CARREGAMENTO RÁPIDO - ABA CIDADE
     async function calcPlanilha() {
         const i = document.getElementById('listaDestino').value;
         if(i === "") return;
         const d = bancoDados[i];
-        const kmIda = parseFloat(d[1]?.replace(',', '.'));
-        document.getElementById('kmP').innerText = (kmIda * 2).toFixed(2);
         
+        document.getElementById('kmP').innerText = (parseFloat(d[1]?.replace(',', '.')) * 2).toFixed(2);
         let html = '';
-        const labels = ['Toco', 'Truck', 'Bitruck', 'Carreta'];
         [2,3,4,5].forEach((col, idx) => {
             const frete = parseFloat(d[col]?.replace(/\./g, '').replace(',', '.'));
-            const litro = parseFloat(d[col+4]?.replace(/\./g, '').replace(',', '.'));
-            html += `<div class="res-item"><span class="veiculo-nome">${labels[idx]}</span><div style="text-align:right"><span class="valor-final">R$ ${frete.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span><span class="valor-litro">R$ ${litro.toFixed(3)}/L</span></div></div>`;
+            html += `<div class="res-item"><span class="veiculo-nome">${['Toco','Truck','Bitruck','Carreta'][idx]}</span><span class="valor-final">R$ ${frete.toLocaleString('pt-BR')}</span></div>`;
         });
         document.getElementById('listaFretesP').innerHTML = html;
         document.getElementById('resPlanilha').style.display = 'block';
+        document.getElementById('loadP').style.display = 'block';
 
-        // CARREGAMENTO INSTANTÂNEO DA ROTA (Usa Nominatim apenas como fallback)
-        const query = `${d[0]}, Goias`;
-        try {
-            const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
-            const data = await r.json();
-            if(data[0]) {
-                const lat = data[0].lat;
-                const lon = data[0].lon;
-                const routeUrl = `https://router.project-osrm.org/route/v1/driving/${origemCoord[1]},${origemCoord[0]};${lon},${lat}?overview=full&geometries=geojson`;
-                const resp = await fetch(routeUrl);
-                const routeData = await resp.json();
-                
-                if(routeData.routes && routeData.routes[0]) {
+        mapP.invalidateSize();
+
+        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(d[0])},Goias&limit=1`)
+            .then(r => r.json()).then(async data => {
+                if(data[0]) {
+                    const lat = data[0].lat, lon = data[0].lon;
+                    const r = await fetch(`https://router.project-osrm.org/route/v1/driving/${origemCoord[1]},${origemCoord[0]};${lon},${lat}?overview=full&geometries=geojson`);
+                    const route = await r.json();
                     if(polyP) mapP.removeLayer(polyP);
                     if(markerP) mapP.removeLayer(markerP);
-                    polyP = L.geoJSON(routeData.routes[0].geometry, {color: '#007bff', weight: 5}).addTo(mapP);
+                    polyP = L.geoJSON(route.routes[0].geometry, {color: '#007bff', weight: 5}).addTo(mapP);
                     markerP = L.marker([lat, lon]).addTo(mapP);
                     mapP.fitBounds(polyP.getBounds(), {padding: [30, 30]});
+                    document.getElementById('loadP').style.display = 'none';
                 }
-            }
-        } catch (e) { console.warn("Erro ao carregar rota."); }
+            });
     }
 
-    // CARREGAMENTO RÁPIDO - ABA COORDENADA
     async function calcMultiRota() {
         const inputs = Array.from(container.querySelectorAll('input'));
-        const rawValues = inputs.map(i => i.value.trim());
-        if (rawValues.some(v => v === "") || rawValues.length === 0) return;
+        const rawValues = inputs.map(i => i.value.trim()).filter(v => v !== "");
+        if (rawValues.length === 0) return;
         
-        let paradasTratadas = rawValues.map(v => tratarCoordenada(v));
-        let pontosURL = `${origemCoord[1]},${origemCoord[0]}`;
-        
-        paradasTratadas.forEach(coord => {
-            const c = coord.split(',');
-            if(c.length === 2) pontosURL += `;${c[1].trim()},${c[0].trim()}`;
-        });
+        document.getElementById('resMapa').style.display = 'block';
+        document.getElementById('loadM').style.display = 'block';
+
+        let paradas = rawValues.map(v => tratarCoordenada(v));
+        let pontos = `${origemCoord[1]},${origemCoord[0]}`;
+        paradas.forEach(p => { const c = p.split(','); if(c.length === 2) pontos += `;${c[1].trim()},${c[0].trim()}`; });
+
+        mapM.invalidateSize();
 
         try {
-            const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${pontosURL}?overview=full&geometries=geojson`);
-            const data = await response.json();
+            const r = await fetch(`https://router.project-osrm.org/route/v1/driving/${pontos}?overview=full&geometries=geojson`);
+            const data = await r.json();
             if(data.routes && data.routes[0]) {
-                const route = data.routes[0];
-                const kmTotal = (route.distance / 1000) * 2;
-                
+                const km = (data.routes[0].distance / 1000) * 2;
                 if(polyM) mapM.removeLayer(polyM);
                 markersM.forEach(m => mapM.removeLayer(m));
                 markersM = [];
 
-                polyM = L.geoJSON(route.geometry, {color: '#007bff', weight: 5}).addTo(mapM);
+                polyM = L.geoJSON(data.routes[0].geometry, {color: '#007bff', weight: 5}).addTo(mapM);
                 markersM.push(L.marker(origemCoord).addTo(mapM));
-
-                paradasTratadas.forEach((p, idx) => {
+                paradas.forEach((p, idx) => {
                     const c = p.split(',');
-                    const icon = L.divIcon({
-                        className: 'custom-div-icon',
-                        html: String.fromCharCode(65 + idx),
-                        iconSize: [22, 22]
-                    });
+                    const icon = L.divIcon({className: 'custom-div-icon', html: String.fromCharCode(65 + idx), iconSize: [22, 22]});
                     markersM.push(L.marker([c[0], c[1]], {icon: icon}).addTo(mapM));
                 });
 
                 mapM.fitBounds(polyM.getBounds(), {padding: [30, 30]});
-                document.getElementById('kmM').innerText = kmTotal.toFixed(2);
+                document.getElementById('kmM').innerText = km.toFixed(2);
+                document.getElementById('loadM').style.display = 'none';
                 
                 let html = '';
-                ['toco', 'truck', 'bitruck', 'carreta'].forEach(v => {
-                    let total = Math.ceil((kmTotal * (precosKm[v] || 0)) / 100) * 100;
-                    html += `<div class="res-item"><span class="veiculo-nome">${v.toUpperCase()}</span><div style="text-align:right"><span class="valor-final">R$ ${total.toLocaleString('pt-BR')}</span><span class="valor-litro">R$ ${(total/volumes[v]).toFixed(3)}/L</span></div></div>`;
+                ['toco','truck','bitruck','carreta'].forEach(v => {
+                    let total = Math.ceil((km * (precosKm[v] || 0)) / 100) * 100;
+                    html += `<div class="res-item"><span class="veiculo-nome">${v.toUpperCase()}</span><span class="valor-final">R$ ${total.toLocaleString('pt-BR')}</span></div>`;
                 });
                 document.getElementById('listaFretesM').innerHTML = html;
-                document.getElementById('resMapa').style.display = 'block';
             }
         } catch (e) { }
     }
 
     function initMaps() {
-        const cfg = { attributionControl: false, zoomControl: false };
+        const cfg = { attributionControl: false, zoomControl: false, fadeAnimation: false, markerZoomAnimation: false };
         mapP = L.map('mapP', cfg).setView(origemCoord, 7);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapP);
-        L.marker(origemCoord).addTo(mapP);
-        
         mapM = L.map('mapM', cfg).setView(origemCoord, 7);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapM);
     }
@@ -342,18 +327,16 @@
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
         document.getElementById(id).classList.add('active');
         setTimeout(() => { 
-            if(mapM) mapM.invalidateSize(); 
-            if(mapP) mapP.invalidateSize(); 
-        }, 100);
+            if(id === 'abaCidades') mapP.invalidateSize();
+            else mapM.invalidateSize();
+        }, 50);
     }
 
     function popularCidades() {
-        let select = document.getElementById('listaDestino');
-        select.innerHTML = '<option value="">Selecione...</option>';
-        bancoDados.sort((a, b) => a[0].trim().localeCompare(b[0].trim())).forEach((l, i) => {
-            let opt = document.createElement('option');
-            opt.value = i; opt.innerHTML = l[0];
-            select.appendChild(opt);
+        let s = document.getElementById('listaDestino');
+        s.innerHTML = '<option value="">Selecione...</option>';
+        bancoDados.sort((a,b) => a[0].localeCompare(b[0])).forEach((l, i) => {
+            let o = document.createElement('option'); o.value = i; o.innerText = l[0]; s.appendChild(o);
         });
     }
 
