@@ -155,7 +155,6 @@
     let mapP, mapM, polyP, polyM, markerP, markersM = [];
     const volumes = { toco: 10000, truck: 15000, bitruck: 20000, carreta: 30000 };
 
-    // Inicialização da lista arrastável
     const container = document.getElementById('listaDestinosContainer');
     Sortable.create(container, { 
         handle: '.handle', 
@@ -166,10 +165,8 @@
     function openTab(tabId) {
         document.getElementById('abaCidades').style.display = (tabId === 'abaCidades') ? 'block' : 'none';
         document.getElementById('abaMapa').style.display = (tabId === 'abaMapa') ? 'block' : 'none';
-        
         document.getElementById('tabP').classList.toggle('active', tabId === 'abaCidades');
         document.getElementById('tabM').classList.toggle('active', tabId === 'abaMapa');
-
         setTimeout(() => {
             if(tabId === 'abaCidades' && mapP) mapP.invalidateSize();
             if(tabId === 'abaMapa' && mapM) mapM.invalidateSize();
@@ -248,7 +245,6 @@
         let cidadesOrdenadas = [...bancoDados].sort((a,b) => a[0].localeCompare(b[0]));
         cidadesOrdenadas.forEach((l) => {
             let o = document.createElement('option');
-            // Encontrar o index original no bancoDados para o calculo
             o.value = bancoDados.indexOf(l);
             o.innerText = l[0];
             s.appendChild(o);
@@ -259,7 +255,6 @@
         const i = document.getElementById('listaDestino').value;
         if(i === "") return;
         const d = bancoDados[i];
-        
         document.getElementById('kmP').innerText = (parseFloat(d[1]?.replace(',', '.')) * 2).toFixed(2);
         let html = '';
         const labels = ['Toco', 'Truck', 'Bitruck', 'Carreta'];
@@ -271,9 +266,7 @@
         document.getElementById('listaFretesP').innerHTML = html;
         document.getElementById('resPlanilha').style.display = 'block';
         document.getElementById('loadP').style.display = 'block';
-        
         mapP.invalidateSize();
-
         try {
             const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(d[0])},Goias&limit=1`);
             const data = await r.json();
@@ -295,28 +288,23 @@
         const inputs = Array.from(container.querySelectorAll('input'));
         const rawValues = inputs.map(i => i.value.trim()).filter(v => v !== "");
         if (rawValues.length === 0) return;
-        
         document.getElementById('resMapa').style.display = 'block';
         document.getElementById('loadM').style.display = 'block';
-        
         let paradas = rawValues.map(v => tratarCoordenada(v));
         let pontos = `${origemCoord[1]},${origemCoord[0]}`;
         paradas.forEach(p => { 
             const c = p.split(','); 
             if(c.length === 2) pontos += `;${c[1].trim()},${c[0].trim()}`; 
         });
-
         mapM.invalidateSize();
-
         try {
             const r = await fetch(`https://router.project-osrm.org/route/v1/driving/${pontos}?overview=full&geometries=geojson`);
             const data = await r.json();
             if(data.routes && data.routes[0]) {
-                const km = (data.routes[0].distance / 1000) * 2;
+                const km = (data.routes[0].distance / 1000);
                 if(polyM) mapM.removeLayer(polyM);
                 markersM.forEach(m => mapM.removeLayer(m));
                 markersM = [];
-
                 polyM = L.geoJSON(data.routes[0].geometry, {color: '#007bff', weight: 5}).addTo(mapM);
                 markersM.push(L.marker(origemCoord).addTo(mapM));
                 paradas.forEach((p, idx) => {
@@ -324,11 +312,9 @@
                     const icon = L.divIcon({className: 'custom-div-icon', html: String.fromCharCode(65 + idx), iconSize: [22, 22]});
                     markersM.push(L.marker([c[0], c[1]], {icon: icon}).addTo(mapM));
                 });
-
                 mapM.fitBounds(polyM.getBounds(), {padding: [30, 30]});
                 document.getElementById('kmM').innerText = km.toFixed(2);
                 document.getElementById('loadM').style.display = 'none';
-                
                 let html = '';
                 ['toco','truck','bitruck','carreta'].forEach(v => {
                     let total = Math.ceil((km * (precosKm[v] || 0)) / 100) * 100;
@@ -344,7 +330,6 @@
         mapP = L.map('mapP', cfg).setView(origemCoord, 7);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapP);
         L.marker(origemCoord).addTo(mapP);
-
         mapM = L.map('mapM', cfg).setView(origemCoord, 7);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapM);
     }
