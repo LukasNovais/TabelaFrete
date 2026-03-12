@@ -28,10 +28,7 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        .container {
-            max-width: 600px;
-            margin: auto;
-        }
+        .container { max-width: 600px; margin: auto; }
 
         .card { 
             background: var(--card-bg); 
@@ -41,125 +38,75 @@
             margin-bottom: 20px;
         }
 
-        .tabs { 
-            display: flex; 
-            background: #eee; 
-            padding: 4px;
-            gap: 4px;
-        }
+        .tabs { display: flex; background: #eee; padding: 4px; gap: 4px; }
         .tab { 
-            flex: 1; 
-            padding: 14px 10px; 
-            text-align: center; 
-            cursor: pointer; 
-            font-weight: 600; 
-            color: var(--text-light);
-            border-radius: 12px;
-            transition: 0.3s;
-            font-size: 14px;
+            flex: 1; padding: 14px 10px; text-align: center; cursor: pointer; 
+            font-weight: 600; color: var(--text-light); border-radius: 12px; 
+            transition: 0.3s; font-size: 14px;
         }
-        .tab.active { 
-            background: var(--card-bg); 
-            color: var(--primary); 
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
+        .tab.active { background: var(--card-bg); color: var(--primary); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
 
         .content { padding: 16px; display: none; }
         .content.active { display: block; }
         
         label { font-weight: 700; font-size: 12px; display: block; margin-bottom: 6px; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.5px; }
         select, input { 
-            width: 100%; 
-            padding: 14px; 
-            border: 1.5px solid var(--border); 
-            border-radius: 12px; 
-            font-size: 16px; 
-            background: #fafafa;
-            margin-bottom: 12px;
-            box-sizing: border-box;
-            transition: border-color 0.2s;
+            width: 100%; padding: 14px; border: 1.5px solid var(--border); 
+            border-radius: 12px; font-size: 16px; background: #fafafa;
+            margin-bottom: 12px; box-sizing: border-box; transition: border-color 0.2s;
         }
         input:focus, select:focus { border-color: var(--primary); outline: none; background: #fff; }
 
         .destino-item { 
-            display: flex; 
-            gap: 8px; 
-            align-items: center; 
-            background: #fff; 
-            padding: 10px; 
-            border: 1px solid var(--border); 
-            border-radius: 14px; 
-            margin-bottom: 10px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            display: flex; gap: 8px; align-items: center; background: #fff; 
+            padding: 10px; border: 1px solid var(--border); border-radius: 14px; 
+            margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+        .ponto-letra {
+            background: var(--primary); color: white; border-radius: 50%;
+            width: 24px; height: 24px; display: flex; align-items: center;
+            justify-content: center; font-size: 12px; font-weight: bold; flex-shrink: 0;
         }
         .handle { cursor: grab; color: #ccc; font-size: 22px; padding: 0 4px; }
         .destino-item input { margin-bottom: 0; flex: 1; border-color: #eee; padding: 10px; }
         
         .btn-save {
-            background: #e7f3ff;
-            color: var(--primary);
-            border: none;
-            border-radius: 10px;
-            width: 40px;
-            height: 40px;
-            cursor: pointer;
-            font-size: 18px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            background: #e7f3ff; color: var(--primary); border: none;
+            border-radius: 10px; width: 40px; height: 40px; cursor: pointer;
+            font-size: 18px; display: flex; align-items: center; justify-content: center;
         }
 
         .btn-remove { 
-            background: #fff0f0; 
-            color: #ff4444; 
-            border: none; 
-            border-radius: 10px; 
-            width: 40px; 
-            height: 40px; 
-            cursor: pointer; 
-            font-size: 18px;
+            background: #fff0f0; color: #ff4444; border: none;
+            border-radius: 10px; width: 40px; height: 40px; cursor: pointer; font-size: 18px;
         }
 
         .btn-add { 
-            background: var(--primary); 
-            color: white; 
-            border: none; 
-            border-radius: 14px; 
-            padding: 16px; 
-            width: 100%; 
-            font-size: 16px;
-            font-weight: 700;
-            cursor: pointer; 
-            margin: 10px 0 20px 0;
-            box-shadow: 0 4px 12px rgba(0,123,255,0.3);
+            background: var(--primary); color: white; border: none; border-radius: 14px; 
+            padding: 16px; width: 100%; font-size: 16px; font-weight: 700;
+            cursor: pointer; margin: 10px 0 20px 0; box-shadow: 0 4px 12px rgba(0,123,255,0.3);
         }
 
         .mapa { height: 280px; width: 100%; border-radius: 16px; margin-top: 15px; border: 1px solid var(--border); }
         
         .km-destaque { 
-            color: var(--primary); 
-            font-weight: 800; 
-            text-align: center; 
-            display: block; 
-            padding: 14px; 
-            background: #eef7ff; 
-            border-radius: 14px; 
-            margin: 15px 0;
-            font-size: 16px;
+            color: var(--primary); font-weight: 800; text-align: center; display: block; 
+            padding: 14px; background: #eef7ff; border-radius: 14px; margin: 15px 0; font-size: 16px;
         }
 
-        .res-item { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            padding: 14px 0; 
-            border-bottom: 1px solid #f0f0f0; 
-        }
+        .res-item { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid #f0f0f0; }
         .res-item:last-child { border-bottom: none; }
         
         .veiculo-nome { font-weight: 600; color: #444; font-size: 15px; }
         .valor-final { font-weight: 800; color: var(--success); font-size: 18px; display: block; }
         .valor-litro { color: var(--text-light); font-size: 12px; font-weight: 500; }
+
+        /* Estilo do Marcador com Letra no Mapa */
+        .custom-div-icon {
+            background: var(--primary); border: 2px solid white; border-radius: 50%;
+            color: white; font-weight: bold; text-align: center; line-height: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
 
         @media (min-width: 601px) {
             body { padding: 40px 20px; }
@@ -179,9 +126,7 @@
 
         <div id="abaCidades" class="content active">
             <label>Cidade de Destino</label>
-            <select id="listaDestino" onchange="calcPlanilha()">
-                <option>Carregando...</option>
-            </select>
+            <select id="listaDestino" onchange="calcPlanilha()"><option>Carregando...</option></select>
             <div id="resPlanilha" style="display:none">
                 <span class="km-destaque">Total: <span id="kmP">0</span> KM</span>
                 <div id="listaFretesP"></div>
@@ -190,7 +135,7 @@
         </div>
 
         <div id="abaMapa" class="content">
-            <label>Rota de Entrega</label>
+            <label>Rota de Entrega (Arraste para organizar)</label>
             <div id="listaDestinosContainer"></div>
             <button class="btn-add" onclick="addDestinoCampo()">+ Adicionar Parada</button>
             <div id="resMapa" style="display:none">
@@ -214,36 +159,50 @@
     const volumes = { toco: 10000, truck: 15000, bitruck: 20000, carreta: 30000 };
 
     const container = document.getElementById('listaDestinosContainer');
-    Sortable.create(container, { handle: '.handle', animation: 150, onEnd: () => calcMultiRota() });
+    Sortable.create(container, { 
+        handle: '.handle', 
+        animation: 150, 
+        onEnd: () => { atualizarLetras(); calcMultiRota(); } 
+    });
+
+    function atualizarLetras() {
+        const itens = container.querySelectorAll('.ponto-letra');
+        itens.forEach((span, index) => {
+            span.innerText = String.fromCharCode(65 + index); // 65 é 'A'
+        });
+    }
 
     function addDestinoCampo() {
         const div = document.createElement('div');
         div.className = 'destino-item';
         div.innerHTML = `
             <span class="handle">☰</span>
+            <span class="ponto-letra"></span>
             <input type="text" placeholder="Nome ou Lat, Long" oninput="calcMultiRota()" list="destinosSalvos">
-            <button class="btn-save" onclick="salvarNoHistorico(this)" title="Salvar no Histórico">💾</button>
-            <button class="btn-remove" onclick="this.parentElement.remove(); calcMultiRota();">✕</button>
+            <button class="btn-save" onclick="salvarNoHistorico(this)" title="Salvar">💾</button>
+            <button class="btn-remove" onclick="this.parentElement.remove(); atualizarLetras(); calcMultiRota();">✕</button>
         `;
         container.appendChild(div);
+        atualizarLetras();
     }
 
-    function salvarNoHistorico(btn) {
-        const input = btn.parentElement.querySelector('input');
-        const valor = input.value.trim();
+    // Função para tratar entrada do Google Maps (vírgula para ponto)
+    function tratarCoordenada(input) {
+        let texto = input.trim();
+        // Se contiver nome do historico, retorna o nome
+        if (historicoCoords[texto]) return historicoCoords[texto];
         
-        if (!valor || valor.split(',').length < 2) {
-            alert("Para salvar, insira a coordenada no formato: latitude, longitude");
-            return;
+        // Se for coordenada do Maps: -16,701, -49,113 -> -16.701, -49.113
+        // Primeiro, lidamos com o formato comum do Maps: Lat[vírgula] Long
+        // Mas o Google Maps usa vírgula tanto para decimais quanto para separar as duas partes em alguns locais
+        let partes = texto.split(/,(?![^,]*$)/); // Divide na última vírgula que separa Lat de Long
+        
+        if (partes.length >= 2) {
+            let lat = partes[0].trim().replace(',', '.');
+            let lon = partes[1].trim().replace(',', '.');
+            return `${lat},${lon}`;
         }
-
-        const nome = prompt("Informe o nome para este destino:");
-        if (nome) {
-            // Como o GitHub não escreve na planilha, orientamos o usuário a adicionar na planilha aberta
-            alert(`Para salvar permanentemente para todos:\n\n1. Copie o nome: ${nome}\n2. Copie a coordenada: ${valor}\n3. Cole na sua planilha na aba 'Historico'.`);
-            // Abre a planilha para facilitar
-            window.open('https://docs.google.com/spreadsheets/d/1vS-d_LpmN8-kbhIJsCur_ryTihieutK0R1GKnKAy8HtYMKUMW-49ID0YbXm3zju7ro09Uw3XWBulGV5/edit#gid=219014695', '_blank');
-        }
+        return texto;
     }
 
     function carregarDados() {
@@ -281,7 +240,21 @@
         });
     }
 
-    async function getRoute(mapObj, polyObj, markerRef, start, end, isMulti = false) {
+    function salvarNoHistorico(btn) {
+        const input = btn.parentElement.querySelector('input');
+        const valor = tratarCoordenada(input.value);
+        if (!valor || valor.split(',').length < 2) {
+            alert("Insira a coordenada válida antes de salvar.");
+            return;
+        }
+        const nome = prompt("Nome para este destino:");
+        if (nome) {
+            alert(`Adicione manualmente na aba 'Historico':\nNome: ${nome}\nCoordenada: ${valor}`);
+            window.open('https://docs.google.com/spreadsheets/d/1vS-d_LpmN8-kbhIJsCur_ryTihieutK0R1GKnKAy8HtYMKUMW-49ID0YbXm3zju7ro09Uw3XWBulGV5/edit#gid=219014695', '_blank');
+        }
+    }
+
+    async function getRoute(mapObj, polyObj, start, end, isMulti = false, paradasOriginais = []) {
         let pontosURL = isMulti ? end : `${start[1]},${start[0]};${end[1]},${end[0]}`;
         const url = `https://router.project-osrm.org/route/v1/driving/${pontosURL}?overview=full&geometries=geojson`;
         
@@ -292,16 +265,31 @@
                 const route = data.routes[0];
                 const km = (route.distance / 1000) * 2;
                 if(polyObj && mapObj.hasLayer(polyObj)) mapObj.removeLayer(polyObj);
-                if(!isMulti && markerRef && mapObj.hasLayer(markerRef)) mapObj.removeLayer(markerRef);
-                if(isMulti) markersM.forEach(m => mapObj.removeLayer(m));
+                markersM.forEach(m => mapObj.removeLayer(m));
+                
                 const newPoly = L.geoJSON(route.geometry, {color: '#007bff', weight: 5}).addTo(mapObj);
+                
                 if(isMulti) {
                     markersM = [];
-                    const paradas = end.split(';');
-                    paradas.forEach(p => { const [lon, lat] = p.split(','); markersM.push(L.marker([lat, lon]).addTo(mapObj)); });
+                    // Adiciona marcador da Origem fixo
+                    markersM.push(L.marker(origemCoord).addTo(mapObj));
+                    
+                    // Adiciona marcadores das paradas com Letras
+                    paradasOriginais.forEach((p, idx) => {
+                        const [lat, lon] = p.split(',');
+                        const letra = String.fromCharCode(65 + idx);
+                        const icon = L.divIcon({
+                            className: 'custom-div-icon',
+                            html: letra,
+                            iconSize: [22, 22]
+                        });
+                        markersM.push(L.marker([lat, lon], {icon: icon}).addTo(mapObj));
+                    });
                 } else {
-                    markerP = L.marker(end).addTo(mapObj);
+                    if(markerP && mapObj.hasLayer(markerP)) mapObj.removeLayer(markerP);
+                    markerP = L.marker(end.split(',')).addTo(mapObj);
                 }
+
                 mapObj.fitBounds(newPoly.getBounds(), {padding: [40, 40]});
                 return {km, poly: newPoly};
             }
@@ -312,13 +300,16 @@
         const inputs = Array.from(container.querySelectorAll('input'));
         const rawValues = inputs.map(i => i.value.trim());
         if (rawValues.some(v => v === "") || rawValues.length === 0) return;
+        
+        let paradasTratadas = rawValues.map(v => tratarCoordenada(v));
         let paradasStr = `${origemCoord[1]},${origemCoord[0]}`;
-        rawValues.forEach(v => {
-            const coord = historicoCoords[v] || v;
+        
+        paradasTratadas.forEach(coord => {
             const c = coord.split(',');
             if(c.length === 2) paradasStr += `;${c[1].trim()},${c[0].trim()}`;
         });
-        const result = await getRoute(mapM, polyM, null, null, paradasStr, true);
+
+        const result = await getRoute(mapM, polyM, null, paradasStr, true, paradasTratadas);
         if(result) {
             polyM = result.poly;
             document.getElementById('kmM').innerText = result.km.toFixed(2);
@@ -348,7 +339,7 @@
         document.getElementById('listaFretesP').innerHTML = html;
         document.getElementById('resPlanilha').style.display = 'block';
         fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${d[0]}, Goias`)
-            .then(r => r.json()).then(async data => { if(data[0]) { const res = await getRoute(mapP, polyP, markerP, origemCoord, [data[0].lat, data[0].lon]); if(res) polyP = res.poly; } });
+            .then(r => r.json()).then(async data => { if(data[0]) { const res = await getRoute(mapP, polyP, origemCoord, `${data[0].lat},${data[0].lon}`); if(res) polyP = res.poly; } });
     }
 
     function initMaps() {
@@ -358,7 +349,6 @@
         L.marker(origemCoord).addTo(mapP);
         mapM = L.map('mapM', cfg).setView(origemCoord, 7);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapM);
-        L.marker(origemCoord).addTo(mapM);
     }
 
     function openTab(id) {
