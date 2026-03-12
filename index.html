@@ -2,8 +2,9 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Frete Inteligente - Senador Canedo</title>
+    <title>Frete Multi-Destino GO</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.14.0/Sortable.min.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
@@ -14,14 +15,18 @@
         .tab.active { background: white; color: #007bff; border-bottom: 3px solid #007bff; }
         .content { padding: 20px; display: none; }
         .content.active { display: block; }
-        .campo { margin-bottom: 12px; }
-        label { font-weight: bold; font-size: 13px; display: block; margin-bottom: 4px; }
-        select, input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
-        .res-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
-        .valor-final { font-weight: bold; color: #28a745; font-size: 16px; }
-        .valor-litro { color: #666; font-size: 12px; font-style: italic; margin-left: 5px; }
-        .km-destaque { color: #007bff; font-weight: bold; text-align: center; display: block; margin: 10px 0; background: #eef7ff; padding: 5px; border-radius: 5px; }
-        .mapa { height: 300px; width: 100%; border-radius: 8px; margin-top: 10px; border: 1px solid #ccc; background: #eee; }
+        
+        .destino-item { display: flex; gap: 8px; align-items: center; background: #f8f9fa; padding: 10px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 8px; }
+        .handle { cursor: grab; color: #999; font-size: 20px; padding: 0 5px; }
+        .destino-item input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
+        .btn-remove { background: #ff4444; color: white; border: none; border-radius: 4px; width: 35px; height: 35px; cursor: pointer; font-weight: bold; }
+        .btn-add { background: #007bff; color: white; border: none; border-radius: 6px; padding: 12px; width: 100%; cursor: pointer; margin-bottom: 15px; font-weight: bold; }
+        
+        .mapa { height: 350px; width: 100%; border-radius: 8px; margin-top: 15px; border: 1px solid #ccc; background: #eee; }
+        .res-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee; }
+        .valor-final { font-weight: bold; color: #28a745; font-size: 17px; }
+        .valor-litro { color: #666; font-size: 12px; font-style: italic; }
+        .km-destaque { color: #007bff; font-weight: bold; text-align: center; display: block; padding: 10px; background: #eef7ff; border-radius: 5px; margin: 10px 0; }
     </style>
 </head>
 <body>
@@ -29,111 +34,154 @@
 <div class="card">
     <div class="tabs">
         <div class="tab active" onclick="openTab('abaCidades')">Por Cidade</div>
-        <div class="tab" onclick="openTab('abaMapa')">Por Coordenada</div>
+        <div class="tab" onclick="openTab('abaMapa')">Multi-Coordenadas</div>
     </div>
 
     <div id="abaCidades" class="content active">
-        <label>Selecione a Cidade:</label>
+        <label>Cidade de Destino:</label>
         <select id="listaDestino" onchange="calcPlanilha()"><option>Carregando cidades...</option></select>
         <div id="resPlanilha" style="display:none">
-            <span class="km-destaque">Distância: <span id="kmP">0</span> KM (Ida/Volta)</span>
+            <span class="km-destaque">KM Total: <span id="kmP">0</span> (Ida/Volta)</span>
             <div id="listaFretesP"></div>
             <div id="mapP" class="mapa"></div>
         </div>
     </div>
 
     <div id="abaMapa" class="content">
-        <div class="campo">
-            <label>Coordenada Origem (Senador Canedo):</label>
-            <input type="text" id="coordOrigem" value="-16.7014123,-49.1130296" readonly>
-        </div>
-        <div class="campo">
-            <label>Coordenada Destino (Lat, Long):</label>
-            <input type="text" id="coordDestino" placeholder="Ex: -16.452, -49.231" oninput="calcRotaAutomatica()">
-        </div>
+        <label>Pontos de Parada (Arraste ☰ para ordenar):</label>
+        <div id="listaDestinosContainer"></div>
+        <button class="btn-add" onclick="addDestinoCampo()">+ Adicionar Parada</button>
+        
         <div id="resMapa" style="display:none">
-            <span class="km-destaque">Rota Rápida: <span id="kmM">0</span> KM (Ida/Volta)</span>
+            <span class="km-destaque">Distância Total: <span id="kmM">0</span> KM (Ida/Volta)</span>
             <div id="listaFretesM"></div>
             <div id="mapM" class="mapa"></div>
         </div>
     </div>
 </div>
 
+<datalist id="destinosSalvos"></datalist>
+
 <script>
-    const urlCSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS-d_LpmN8-kbhIJsCur_ryTihieutK0R1GKnKAy8HtYMKUMW-49ID0YbXm3zju7ro09Uw3XWBulGV5/pub?gid=1728474295&single=true&output=csv';
+    // URLs das Planilhas
+    const urlPlanilha = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS-d_LpmN8-kbhIJsCur_ryTihieutK0R1GKnKAy8HtYMKUMW-49ID0YbXm3zju7ro09Uw3XWBulGV5/pub?gid=1728474295&single=true&output=csv';
+    const urlHistorico = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS-d_LpmN8-kbhIJsCur_ryTihieutK0R1GKnKAy8HtYMKUMW-49ID0YbXm3zju7ro09Uw3XWBulGV5/pub?gid=219014695&single=true&output=csv';
+    
     const origemCoord = [-16.7014123, -49.1130296];
-    let bancoDados = [], precosKm = {};
-    let mapP, mapM, polyP, polyM, markerP, markerM;
+    let bancoDados = [], precosKm = {}, historicoCoords = {};
+    let mapP, mapM, polyP, polyM, markerP, markersM = [];
     const volumes = { toco: 10000, truck: 15000, bitruck: 20000, carreta: 30000 };
 
-    function openTab(id) {
-        document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        document.getElementById(id).classList.add('active');
-        setTimeout(() => { 
-            if(mapP) mapP.invalidateSize(); 
-            if(mapM) mapM.invalidateSize(); 
-        }, 300);
+    // Sortable.js para arrastar os campos
+    const container = document.getElementById('listaDestinosContainer');
+    Sortable.create(container, { handle: '.handle', animation: 150, onEnd: () => calcMultiRota() });
+
+    function addDestinoCampo() {
+        const div = document.createElement('div');
+        div.className = 'destino-item';
+        div.innerHTML = `
+            <span class="handle">☰</span>
+            <input type="text" placeholder="Nome ou Coordenada" oninput="calcMultiRota()" list="destinosSalvos">
+            <button class="btn-remove" onclick="this.parentElement.remove(); calcMultiRota();">✕</button>
+        `;
+        container.appendChild(div);
     }
 
-    Papa.parse(urlCSV, {
-        download: true,
-        header: false,
-        complete: function(results) {
-            const linhas = results.data;
-            precosKm = {
-                toco: parseFloat(linhas[1][2].replace(',', '.')),
-                truck: parseFloat(linhas[1][3].replace(',', '.')),
-                bitruck: parseFloat(linhas[1][2].replace(',', '.')),
-                carreta: parseFloat(linhas[1][3].replace(',', '.'))
-            };
-            bancoDados = linhas.slice(3).filter(l => l[0]);
-            bancoDados.sort((a, b) => a[0].trim().localeCompare(b[0].trim()));
-            let select = document.getElementById('listaDestino');
-            select.innerHTML = '<option value="">Selecione...</option>';
-            bancoDados.forEach((l, i) => {
-                let opt = document.createElement('option');
-                opt.value = i; opt.innerHTML = l[0];
-                select.appendChild(opt);
-            });
-            initMaps();
-        }
-    });
+    function carregarDados() {
+        // 1. Carregar Preços e Cidades
+        Papa.parse(urlPlanilha, {
+            download: true,
+            complete: function(results) {
+                const linhas = results.data;
+                precosKm = {
+                    toco: parseFloat(linhas[1][2].replace(',', '.')),
+                    truck: parseFloat(linhas[1][3].replace(',', '.')),
+                    bitruck: parseFloat(linhas[1][2].replace(',', '.')),
+                    carreta: parseFloat(linhas[1][3].replace(',', '.'))
+                };
+                bancoDados = linhas.slice(3).filter(l => l[0]);
+                popularCidades();
+            }
+        });
 
-    function initMaps() {
-        const config = { zoomControl: true, attributionControl: false };
-        mapP = L.map('mapP', config).setView(origemCoord, 7);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapP);
-        L.marker(origemCoord).addTo(mapP);
-
-        mapM = L.map('mapM', config).setView(origemCoord, 7);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapM);
-        L.marker(origemCoord).addTo(mapM);
+        // 2. Carregar Aba Historico (Favoritos)
+        Papa.parse(urlHistorico, {
+            download: true,
+            complete: function(results) {
+                const list = document.getElementById('destinosSalvos');
+                list.innerHTML = "";
+                results.data.forEach(l => {
+                    if(l[0] && l[1]) {
+                        historicoCoords[l[0].trim()] = l[1].trim();
+                        let opt = document.createElement('option');
+                        opt.value = l[0].trim();
+                        list.appendChild(opt);
+                    }
+                });
+            }
+        });
     }
 
-    async function getRoute(mapObj, polyObj, markerObj, start, end, callback) {
-        // Perfil 'driving' do OSRM prioriza rodovias principais
-        const url = `https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${end[1]},${end[0]}?overview=full&geometries=geojson`;
+    async function getRoute(mapObj, polyObj, markerRef, start, end, isMulti = false) {
+        let pontosURL = isMulti ? end : `${start[1]},${start[0]};${end[1]},${end[0]}`;
+        const url = `https://router.project-osrm.org/route/v1/driving/${pontosURL}?overview=full&geometries=geojson`;
+        
         try {
             const response = await fetch(url);
             const data = await response.json();
             if(data.routes && data.routes[0]) {
+                const route = data.routes[0];
+                const km = (route.distance / 1000) * 2;
+                
+                // Limpeza
                 if(polyObj && mapObj.hasLayer(polyObj)) mapObj.removeLayer(polyObj);
-                if(markerObj && mapObj.hasLayer(markerObj)) mapObj.removeLayer(markerObj);
+                if(!isMulti && markerRef && mapObj.hasLayer(markerRef)) mapObj.removeLayer(markerRef);
+                if(isMulti) markersM.forEach(m => mapObj.removeLayer(m));
+
+                const newPoly = L.geoJSON(route.geometry, {color: '#007bff', weight: 5}).addTo(mapObj);
                 
-                const poly = L.geoJSON(data.routes[0].geometry, {color: '#007bff', weight: 5}).addTo(mapObj);
-                const mark = L.marker(end).addTo(mapObj);
-                
-                // AJUSTE DE ZOOM: Enquadra a rota inteira na tela
-                mapObj.fitBounds(poly.getBounds(), {padding: [40, 40]});
-                
-                callback((data.routes[0].distance / 1000) * 2, poly, mark);
+                if(isMulti) {
+                    markersM = [];
+                    const paradas = end.split(';');
+                    paradas.forEach(p => {
+                        const [lon, lat] = p.split(',');
+                        markersM.push(L.marker([lat, lon]).addTo(mapObj));
+                    });
+                } else {
+                    markerP = L.marker(end).addTo(mapObj);
+                }
+
+                mapObj.fitBounds(newPoly.getBounds(), {padding: [40, 40]});
+                return {km, poly: newPoly};
             }
-        } catch (e) { console.error("Erro na rota."); }
+        } catch (e) { console.error("Erro na rota."); return null; }
     }
 
-    const formatM = (v) => "R$ " + v.toLocaleString('pt-BR', {minimumFractionDigits: 2});
-    const formatL = (v) => "(R$ " + v.toLocaleString('pt-BR', {minimumFractionDigits: 3, maximumFractionDigits: 3}) + "/L)";
+    async function calcMultiRota() {
+        const inputs = Array.from(container.querySelectorAll('input'));
+        const rawValues = inputs.map(i => i.value.trim());
+        if (rawValues.some(v => v === "") || rawValues.length === 0) return;
+
+        let paradasStr = `${origemCoord[1]},${origemCoord[0]}`;
+        rawValues.forEach(v => {
+            const coord = historicoCoords[v] || v;
+            const c = coord.split(',');
+            if(c.length === 2) paradasStr += `;${c[1].trim()},${c[0].trim()}`;
+        });
+
+        const result = await getRoute(mapM, polyM, null, null, paradasStr, true);
+        if(result) {
+            polyM = result.poly;
+            document.getElementById('kmM').innerText = result.km.toFixed(2);
+            let html = '';
+            ['toco', 'truck', 'bitruck', 'carreta'].forEach(v => {
+                let total = Math.ceil((result.km * precosKm[v]) / 100) * 100;
+                html += `<div class="res-item"><span>${v.toUpperCase()}</span><div style="text-align:right"><span class="valor-final">R$ ${total.toLocaleString('pt-BR')}</span><br><span class="valor-litro">R$ ${(total/volumes[v]).toFixed(3)}/L</span></div></div>`;
+            });
+            document.getElementById('listaFretesM').innerHTML = html;
+            document.getElementById('resMapa').style.display = 'block';
+        }
+    }
 
     function calcPlanilha() {
         const i = document.getElementById('listaDestino').value;
@@ -147,43 +195,49 @@
         [2,3,4,5].forEach((col, idx) => {
             const frete = parseFloat(d[col].replace(/\./g, '').replace(',', '.'));
             const litro = parseFloat(d[col+4].replace(/\./g, '').replace(',', '.'));
-            html += `<div class="res-item"><span>${labels[idx]}</span><div style="text-align:right"><span class="valor-final">${formatM(frete)}</span><br><span class="valor-litro">${formatL(litro)}</span></div></div>`;
+            html += `<div class="res-item"><span>${labels[idx]}</span><div style="text-align:right"><span class="valor-final">R$ ${frete.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span><br><span class="valor-litro">R$ ${litro.toFixed(3)}/L</span></div></div>`;
         });
         document.getElementById('listaFretesP').innerHTML = html;
         document.getElementById('resPlanilha').style.display = 'block';
 
         fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${d[0]}, Goias`)
-            .then(r => r.json()).then(data => {
+            .then(r => r.json()).then(async data => {
                 if(data[0]) {
-                    setTimeout(() => {
-                        getRoute(mapP, polyP, markerP, origemCoord, [data[0].lat, data[0].lon], (km, p, m) => { polyP = p; markerP = m; });
-                    }, 100);
+                    const res = await getRoute(mapP, polyP, markerP, origemCoord, [data[0].lat, data[0].lon]);
+                    if(res) polyP = res.poly;
                 }
             });
     }
 
-    function calcRotaAutomatica() {
-        const val = document.getElementById('coordDestino').value;
-        const parts = val.split(',');
-        if(parts.length === 2) {
-            const lat = parseFloat(parts[0].trim());
-            const lon = parseFloat(parts[1].trim());
-            if(!isNaN(lat) && !isNaN(lon)) {
-                getRoute(mapM, polyM, markerM, origemCoord, [lat, lon], (kmTotal, p, m) => {
-                    polyM = p; markerM = m;
-                    document.getElementById('kmM').innerText = kmTotal.toFixed(2);
-                    let html = '';
-                    ['toco', 'truck', 'bitruck', 'carreta'].forEach(v => {
-                        let total = Math.ceil((kmTotal * precosKm[v]) / 100) * 100;
-                        let vLitro = total / volumes[v];
-                        html += `<div class="res-item"><span>${v.toUpperCase()}</span><div style="text-align:right"><span class="valor-final">${formatM(total)}</span><br><span class="valor-litro">${formatL(vLitro)}</span></div></div>`;
-                    });
-                    document.getElementById('listaFretesM').innerHTML = html;
-                    document.getElementById('resMapa').style.display = 'block';
-                });
-            }
-        }
+    function initMaps() {
+        const cfg = { attributionControl: false };
+        mapP = L.map('mapP', cfg).setView(origemCoord, 7);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapP);
+        L.marker(origemCoord).addTo(mapP);
+
+        mapM = L.map('mapM', cfg).setView(origemCoord, 7);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapM);
+        L.marker(origemCoord).addTo(mapM);
     }
+
+    function openTab(id) {
+        document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        setTimeout(() => { if(mapM) mapM.invalidateSize(); if(mapP) mapP.invalidateSize(); }, 300);
+    }
+
+    function popularCidades() {
+        let select = document.getElementById('listaDestino');
+        select.innerHTML = '<option value="">Selecione...</option>';
+        bancoDados.sort((a, b) => a[0].trim().localeCompare(b[0].trim())).forEach((l, i) => {
+            let opt = document.createElement('option');
+            opt.value = i; opt.innerHTML = l[0];
+            select.appendChild(opt);
+        });
+    }
+
+    window.onload = () => { carregarDados(); initMaps(); addDestinoCampo(); };
 </script>
 </body>
 </html>
