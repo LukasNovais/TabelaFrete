@@ -291,17 +291,26 @@
         document.getElementById('resMapa').style.display = 'block';
         document.getElementById('loadM').style.display = 'block';
         let paradas = rawValues.map(v => tratarCoordenada(v));
-        let pontos = `${origemCoord[1]},${origemCoord[0]}`;
+        
+        // CONSTRUÇÃO DA ROTA FECHADA (ORIGEM -> PONTOS -> ORIGEM)
+        let pontosArray = [];
+        pontosArray.push(`${origemCoord[1]},${origemCoord[0]}`); // Início na Origem
+        
         paradas.forEach(p => { 
             const c = p.split(','); 
-            if(c.length === 2) pontos += `;${c[1].trim()},${c[0].trim()}`; 
+            if(c.length === 2) pontosArray.push(`${c[1].trim()},${c[0].trim()}`); 
         });
+        
+        pontosArray.push(`${origemCoord[1]},${origemCoord[0]}`); // Fim na Origem (Retorno)
+        
+        let pontosStr = pontosArray.join(';');
         mapM.invalidateSize();
+
         try {
-            const r = await fetch(`https://router.project-osrm.org/route/v1/driving/${pontos}?overview=full&geometries=geojson`);
+            const r = await fetch(`https://router.project-osrm.org/route/v1/driving/${pontosStr}?overview=full&geometries=geojson`);
             const data = await r.json();
             if(data.routes && data.routes[0]) {
-                const km = (data.routes[0].distance / 1000);
+                const km = (data.routes[0].distance / 1000); // Distância total do circuito
                 if(polyM) mapM.removeLayer(polyM);
                 markersM.forEach(m => mapM.removeLayer(m));
                 markersM = [];
