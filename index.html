@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Frete Inteligente Pro v2.1</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <title>Frete Inteligente Pro API</title>
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -48,7 +48,7 @@
                 <div style="flex: 2;">
                     <label>Cidade de Destino</label>
                     <select id="selectCidade" onchange="app.calcPorCidade(this.value)">
-                        <option value="">Carregando dados...</option>
+                        <option value="">Conectando à API...</option>
                     </select>
                 </div>
                 <div style="flex: 1;">
@@ -73,18 +73,24 @@
 
 <script>
 const CONFIG = {
-    urlCSV: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS-d_LpmN8-kbhIJsCur_ryTihieutK0R1GKnKAy8HtYMKUMW-49ID0YbXm3zju7ro09Uw3XWBulGV5/pub?gid=1728474295&single=true&output=csv',
+    // Sua URL da API do Google Apps Script
+    urlAPI: 'https://script.google.com/macros/s/AKfycbxoh771pEnx1osIbbEABeQQZU8n_c7EcBOuomcWA5zQvZ84cBAcOGXmTKr4SdFxQ76B/exec',
     origem: [-16.7014123, -49.1130296],
     veiculos: [
-        { label: 'Toco', col: 2, vol: 10000 }, { label: 'Truck', col: 3, vol: 15000 },
-        { label: 'Bitruck', col: 4, vol: 20000 }, { label: 'Carreta', col: 5, vol: 30000 }
+        { label: 'Toco', col: 2, vol: 10000 }, 
+        { label: 'Truck', col: 3, vol: 15000 },
+        { label: 'Bitruck', col: 4, vol: 20000 }, 
+        { label: 'Carreta', col: 5, vol: 30000 }
     ]
 };
 
 let state = { db: [], mapP: null, polyP: null, markerP: null };
 
 const app = {
-    init: () => { app.initMap(); app.fetchData(); },
+    init: () => { 
+        app.initMap(); 
+        app.fetchData(); 
+    },
 
     initMap: () => {
         state.mapP = L.map('mapP', { attributionControl: false, zoomControl: false }).setView(CONFIG.origem, 7);
@@ -92,20 +98,23 @@ const app = {
         L.marker(CONFIG.origem).addTo(state.mapP);
     },
 
-    fetchData: () => {
-        Papa.parse(CONFIG.urlCSV, {
-            download: true,
-            complete: (results) => {
-                state.db = results.data.slice(3).filter(row => row[0] && row[1]);
-                app.renderSelect();
-            }
-        });
+    fetchData: async () => {
+        try {
+            const response = await fetch(CONFIG.urlAPI);
+            const data = await response.json();
+            // Recebe os dados da API e filtra linhas que possuam nome e KM
+            state.db = data.filter(row => row[0] && row[1]);
+            app.renderSelect();
+        } catch (e) {
+            console.error("Erro ao carregar API:", e);
+            document.getElementById('selectCidade').innerHTML = '<option>Erro ao carregar dados</option>';
+        }
     },
 
     renderSelect: () => {
         const select = document.getElementById('selectCidade');
         select.innerHTML = '<option value="">Selecione a cidade...</option>';
-        state.db.sort((a,b) => a[0].localeCompare(b[0])).forEach((row) => {
+        state.db.sort((a,b) => String(a[0]).localeCompare(String(b[0]))).forEach((row) => {
             const opt = document.createElement('option');
             opt.value = state.db.indexOf(row);
             opt.innerText = `${row[0]} (${row[1]} KM)`;
@@ -124,22 +133,26 @@ const app = {
         document.getElementById('selectCidade').value = '';
         
         let target = parseFloat(kmIda);
+        // Busca o KM mais próximo na base de dados
         let closestRow = state.db.reduce((prev, curr) => {
-            let currKm = parseFloat(curr[1].replace(',', '.'));
-            let prevKm = parseFloat(prev[1].replace(',', '.'));
+            let currKm = parseFloat(String(curr[1]).replace(',', '.'));
+            let prevKm = parseFloat(String(prev[1]).replace(',', '.'));
             return (Math.abs(currKm - target) < Math.abs(prevKm - target) ? curr : prev);
         });
 
         if (closestRow) {
             app.displayResult(closestRow, false);
-            const kmRef = parseFloat(closestRow[1].replace(',', '.'));
-            if(kmRef !== target) app.showStatus('P', `KM ${target} não encontrado. Mostrando valor para ${kmRef} KM (mais próximo).`, 'primary');
-            else app.showStatus('P', '', '');
+            const kmRef = parseFloat(String(closestRow[1]).replace(',', '.'));
+            if(kmRef !== target) {
+                app.showStatus('P', `KM ${target} não encontrado. Mostrando valor para ${kmRef} KM (mais próximo).`, 'primary');
+            } else {
+                app.showStatus('P', '', '');
+            }
         }
     },
 
     displayResult: (row, drawRoute) => {
-        const kmIda = parseFloat(row[1].replace(',', '.'));
+        const kmIda = parseFloat(String(row[1]).replace(',', '.'));
         const kmTotal = Math.round(kmIda * 2);
         
         document.getElementById('resPlanilha').style.display = 'block';
@@ -147,19 +160,32 @@ const app = {
 
         let html = '';
         CONFIG.veiculos.forEach(v => {
-            const valorStr = row[v.col] || "0,00";
-            const valorNum = parseFloat(valorStr.replace(/\./g, '').replace(',', '.'));
-            const valorLitro = (valorNum / v.vol).toFixed(3);
+            let valorRaw = row[v.col] || "0,00";
+            // Trata o valor vindo da API (string ou número)
+            let valorLimpo = String(valorRaw).replace(/\./g, '').replace(',', '.');
+            let valorNum = parseFloat(valorLimpo);
+            let valorLitro = (valorNum / v.vol).toFixed(3);
+
+            // Formata para exibição em Real
+            let valorFormatado = valorNum.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+
             html += `
                 <div class="res-item">
                     <span class="veiculo-nome">${v.label} <span class="valor-litro">(${valorLitro})</span></span>
-                    <span class="valor-final">R$ ${valorStr}</span>
+                    <span class="valor-final">R$ ${valorFormatado}</span>
                 </div>`;
         });
         document.getElementById('listaFretesP').innerHTML = html;
         
-        if (drawRoute) app.updateMap(row[0]);
-        else if(state.polyP) { state.mapP.removeLayer(state.polyP); if(state.markerP) state.mapP.removeLayer(state.markerP); }
+        // Regra: Traçar rota apenas se for escolha por CIDADE
+        if (drawRoute) {
+            app.updateMap(row[0]);
+        } else {
+            if(state.polyP) { 
+                state.mapP.removeLayer(state.polyP); 
+                if(state.markerP) state.mapP.removeLayer(state.markerP); 
+            }
+        }
     },
 
     updateMap: async (cidade) => {
@@ -181,7 +207,9 @@ const app = {
                 state.mapP.invalidateSize();
                 app.showStatus('P', '', '');
             }
-        } catch (e) { app.showStatus('P', 'Erro ao carregar rota.', 'danger'); }
+        } catch (e) { 
+            app.showStatus('P', 'Erro ao carregar rota.', 'danger'); 
+        }
     },
 
     switchTab: (id) => {
