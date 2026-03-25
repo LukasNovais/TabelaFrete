@@ -10,7 +10,7 @@
 
     <style>
         :root {
-            --primary: #007bff; --success: #28a745; --danger: #dc3545;
+            --primary: #007bff; --success: #28a745; --danger: #dc3545; --warning: #f39c12;
             --bg: #f8f9fa; --card-bg: #ffffff; --text: #212529;
             --border: #dee2e6; --radius: 12px;
         }
@@ -26,10 +26,13 @@
         label { font-weight: 700; font-size: 11px; display: block; margin-bottom: 5px; color: #666; text-transform: uppercase; }
         select, input { width: 100%; padding: 12px; border: 1.5px solid var(--border); border-radius: var(--radius); font-size: 16px; box-sizing: border-box; }
         .km-destaque { color: var(--primary); font-weight: 800; text-align: center; display: block; padding: 15px; background: #f0f7ff; border-radius: var(--radius); margin: 15px 0; font-size: 20px; border: 1px solid #d0e4ff; }
-        .res-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f1f1f1; }
-        .veiculo-nome { font-weight: 700; color: #495057; font-size: 15px; }
-        .valor-final { font-weight: 800; color: var(--success); font-size: 18px; }
-        .valor-litro { color: #666; font-size: 14px; font-weight: normal; margin-left: 5px; }
+        .res-item { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid #f1f1f1; }
+        .veiculo-info { display: flex; flex-direction: column; }
+        .veiculo-nome { font-weight: 700; color: #495057; font-size: 16px; }
+        .valor-litro { color: #666; font-size: 13px; font-weight: 600; margin-top: 2px; }
+        .valor-container { text-align: right; }
+        .valor-final { font-weight: 800; color: var(--success); font-size: 19px; display: block; }
+        .antt-box { font-size: 12px; color: var(--warning); font-weight: 700; background: #fffcf0; padding: 2px 6px; border-radius: 4px; border: 1px solid #ffeeba; margin-top: 4px; display: inline-block; }
         .mapa { height: 300px; width: 100%; border-radius: var(--radius); margin-top: 15px; border: 1px solid var(--border); }
         .status-msg { font-size: 13px; font-weight: 600; text-align: center; margin: 10px 0; display: none; }
     </style>
@@ -73,15 +76,21 @@
 
 <script>
 const CONFIG = {
-    // Sua URL da API do Google Apps Script
     urlAPI: 'https://script.google.com/macros/s/AKfycbxoh771pEnx1osIbbEABeQQZU8n_c7EcBOuomcWA5zQvZ84cBAcOGXmTKr4SdFxQ76B/exec',
     origem: [-16.7014123, -49.1130296],
     veiculos: [
-        { label: 'Toco', col: 2, vol: 10000 }, 
-        { label: 'Truck', col: 3, vol: 15000 },
-        { label: 'Bitruck', col: 4, vol: 20000 }, 
-        { label: 'Carreta', col: 5, vol: 30000 }
-    ]
+        { label: 'Toco', col: 2, vol: 10000, eixos: 2 }, 
+        { label: 'Truck', col: 3, vol: 15000, eixos: 3 },
+        { label: 'Bitruck', col: 4, vol: 20000, eixos: 4 }, 
+        { label: 'Carreta', col: 5, vol: 30000, eixos: 5 }
+    ],
+    // TABELA ANTT ATUALIZADA - CARGA PERIGOSA A GRANEL (Coeficientes Médios)
+    antt: {
+        2: { ccd: 5.0932, cc: 472.19 }, // 2 Eixos
+        3: { ccd: 5.3789, cc: 603.95 }, // 3 Eixos
+        4: { ccd: 7.2215, cc: 676.01 }, // 4 Eixos
+        5: { ccd: 8.0431, cc: 745.33 }  // 5 Eixos
+    }
 };
 
 let state = { db: [], mapP: null, polyP: null, markerP: null };
@@ -102,7 +111,6 @@ const app = {
         try {
             const response = await fetch(CONFIG.urlAPI);
             const data = await response.json();
-            // Recebe os dados da API e filtra linhas que possuam nome e KM
             state.db = data.filter(row => row[0] && row[1]);
             app.renderSelect();
         } catch (e) {
@@ -131,53 +139,60 @@ const app = {
     calcPorKm: (kmIda) => {
         if (!kmIda) return;
         document.getElementById('selectCidade').value = '';
-        
         let target = parseFloat(kmIda);
-        // Busca o KM mais próximo na base de dados
         let closestRow = state.db.reduce((prev, curr) => {
             let currKm = parseFloat(String(curr[1]).replace(',', '.'));
             let prevKm = parseFloat(String(prev[1]).replace(',', '.'));
             return (Math.abs(currKm - target) < Math.abs(prevKm - target) ? curr : prev);
         });
-
         if (closestRow) {
-            app.displayResult(closestRow, false);
-            const kmRef = parseFloat(String(closestRow[1]).replace(',', '.'));
-            if(kmRef !== target) {
-                app.showStatus('P', `KM ${target} não encontrado. Mostrando valor para ${kmRef} KM (mais próximo).`, 'primary');
-            } else {
-                app.showStatus('P', '', '');
-            }
+            // Criamos uma linha virtual com o KM manual do usuário, mas mantendo preços da linha mais próxima
+            let virtualRow = [...closestRow];
+            virtualRow[1] = target; 
+            app.displayResult(virtualRow, false);
+            app.showStatus('P', `Baseado em ${target} KM manual.`, 'primary');
         }
+    },
+
+    // FUNÇÃO CORE DE CÁLCULO ANTT
+    calcularValorANTT: (kmTotal, eixos) => {
+        const coef = CONFIG.antt[eixos];
+        if(!coef) return 0;
+        // Fórmula: (Coeficiente Deslocamento * KM) + Coeficiente Carga
+        const resultado = (coef.ccd * kmTotal) + coef.cc;
+        return resultado;
     },
 
     displayResult: (row, drawRoute) => {
         const kmIda = parseFloat(String(row[1]).replace(',', '.'));
-        const kmTotal = Math.round(kmIda * 2);
+        const kmTotal = kmIda * 2;
         
         document.getElementById('resPlanilha').style.display = 'block';
-        document.getElementById('kmDisplayP').innerText = `Total (Ida e Volta): ${kmTotal} KM`;
+        document.getElementById('kmDisplayP').innerText = `Total (Ida e Volta): ${kmTotal.toFixed(1)} KM`;
 
         let html = '';
         CONFIG.veiculos.forEach(v => {
             let valorRaw = row[v.col] || "0,00";
-            // Trata o valor vindo da API (string ou número)
             let valorLimpo = String(valorRaw).replace(/\./g, '').replace(',', '.');
             let valorNum = parseFloat(valorLimpo);
             let valorLitro = (valorNum / v.vol).toFixed(3);
-
-            // Formata para exibição em Real
-            let valorFormatado = valorNum.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+            
+            // Cálculo ANTT Específico
+            let valorANTT = app.calcularValorANTT(kmTotal, v.eixos);
 
             html += `
                 <div class="res-item">
-                    <span class="veiculo-nome">${v.label} <span class="valor-litro">(${valorLitro})</span></span>
-                    <span class="valor-final">R$ ${valorFormatado}</span>
+                    <div class="veiculo-info">
+                        <span class="veiculo-nome">${v.label} <span class="valor-litro">(R$ ${valorLitro}/L)</span></span>
+                        <span class="antt-box">ANTT Mínimo: R$ ${valorANTT.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    </div>
+                    <div class="valor-container">
+                        <span class="valor-final">R$ ${valorNum.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                    </div>
                 </div>`;
         });
         document.getElementById('listaFretesP').innerHTML = html;
         
-        // Regra: Traçar rota apenas se for escolha por CIDADE
         if (drawRoute) {
             app.updateMap(row[0]);
         } else {
@@ -197,11 +212,9 @@ const app = {
                 const dest = [geoData[0].lat, geoData[0].lon];
                 const rReq = await fetch(`https://router.project-osrm.org/route/v1/driving/${CONFIG.origem[1]},${CONFIG.origem[0]};${dest[1]},${dest[0]}?overview=full&geometries=geojson`);
                 const rData = await rReq.json();
-
                 if (state.polyP) state.mapP.removeLayer(state.polyP);
                 if (state.markerP) state.mapP.removeLayer(state.markerP);
-
-                state.polyP = L.geoJSON(rData.routes[0].geometry, { color: CONFIG.primary, weight: 5 }).addTo(state.mapP);
+                state.polyP = L.geoJSON(rData.routes[0].geometry, { color: '#007bff', weight: 5 }).addTo(state.mapP);
                 state.markerP = L.marker(dest).addTo(state.mapP);
                 state.mapP.fitBounds(state.polyP.getBounds(), { padding: [30, 30] });
                 state.mapP.invalidateSize();
