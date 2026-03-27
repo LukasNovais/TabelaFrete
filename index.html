@@ -3,106 +3,136 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Frete Automático - ANTT Realtime</title>
+    <title>Calculador de Fretes - Transportadora</title>
     <style>
-        :root { --primary: #004a99; --success: #2ecc71; --warning: #f1c40f; --bg: #f4f7f6; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); padding: 20px; margin: 0; }
-        .card { max-width: 600px; margin: auto; background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
-        .header { text-align: center; border-bottom: 2px solid #eee; margin-bottom: 20px; padding-bottom: 10px; }
-        .update-badge { font-size: 10px; background: #e0e0e0; padding: 4px 8px; border-radius: 10px; color: #666; }
-        select, input { width: 100%; padding: 15px; margin: 10px 0; border: 2px solid #eee; border-radius: 12px; font-size: 16px; outline: none; }
-        .result-box { margin-top: 20px; background: #f9f9f9; border-radius: 15px; padding: 15px; border-left: 5px solid var(--primary); }
-        .row-frete { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #eee; }
-        .label-veiculo { font-weight: bold; color: #333; }
-        .val-antt { font-size: 11px; color: var(--warning); font-weight: bold; display: block; }
-        .val-meu { font-size: 18px; font-weight: 900; color: var(--success); }
-        .alerta { font-size: 10px; color: red; font-weight: bold; text-transform: uppercase; }
+        :root { --blue: #004a99; --green: #28a745; --orange: #f39c12; --bg: #f4f7f6; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); margin: 0; padding: 15px; }
+        .card { max-width: 650px; margin: auto; background: white; border-radius: 16px; box-shadow: 0 4px 25px rgba(0,0,0,0.1); padding: 25px; }
+        .header { text-align: center; border-bottom: 2px solid #eee; margin-bottom: 20px; padding-bottom: 15px; }
+        
+        .input-row { display: flex; gap: 15px; margin-bottom: 25px; flex-wrap: wrap; }
+        .field { flex: 1; min-width: 250px; }
+        label { font-size: 11px; font-weight: 800; color: #666; text-transform: uppercase; margin-bottom: 8px; display: block; }
+        select, input { width: 100%; padding: 14px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 16px; box-sizing: border-box; }
+
+        .km-panel { background: #004a99; color: white; padding: 20px; border-radius: 12px; text-align: center; margin-bottom: 20px; }
+        .km-label { font-size: 12px; opacity: 0.9; text-transform: uppercase; font-weight: bold; }
+        .km-val { font-size: 32px; font-weight: 900; display: block; }
+
+        .item { display: flex; justify-content: space-between; align-items: center; padding: 18px 0; border-bottom: 1px solid #f1f1f1; }
+        .item:last-child { border: none; }
+        .v-info { display: flex; flex-direction: column; }
+        .v-nome { font-weight: 800; font-size: 18px; color: #333; }
+        .v-antt { font-size: 12px; color: var(--orange); font-weight: bold; margin-top: 4px; }
+        
+        .v-prices { text-align: right; }
+        .price-final { font-size: 22px; font-weight: 900; color: var(--green); display: block; }
+        .alerta { color: #e74c3c; font-size: 10px; font-weight: 900; text-transform: uppercase; }
     </style>
 </head>
 <body>
 
 <div class="card">
     <div class="header">
-        <h2 style="margin:0; color: var(--primary);">Transportadora Pro</h2>
-        <span id="dataSync" class="update-badge">Sincronizando ANTT...</span>
+        <h2 style="margin:0; color: var(--blue);">Cálculo de Frete e ANTT</h2>
+        <span id="status" style="font-size: 10px; color: #999;">Sincronizando dados oficiais...</span>
     </div>
 
-    <label>Cidade de Destino</label>
-    <select id="selCidade" onchange="app.calc(this.value)">
-        <option>Carregando cidades...</option>
-    </select>
-
-    <div id="resultado" style="display:none">
-        <div style="text-align: center; font-weight: bold; color: var(--primary); margin: 10px 0;">
-            KM Total (Ida/Volta): <span id="kmTotal">0</span> KM
+    <div class="input-row">
+        <div class="field">
+            <label>Cidade (Tabela Própria)</label>
+            <select id="selCidade" onchange="app.porCidade(this.value)">
+                <option value="">Carregando...</option>
+            </select>
         </div>
-        <div id="lista"></div>
+        <div class="field">
+            <label>KM Ida (Manual)</label>
+            <input type="number" id="kmMan" placeholder="Ex: 360" oninput="app.porKm(this.value)">
+        </div>
     </div>
+
+    <div id="displayKM" class="km-panel" style="display:none">
+        <span class="km-label">Percurso Total (Ida + Retorno Vazio)</span>
+        <span class="km-val"><span id="kmTotal">0</span> KM</span>
+    </div>
+
+    <div id="lista"></div>
 </div>
 
 <script>
 const CONFIG = {
-    api: 'https://script.google.com/macros/s/AKfycbxGk5uWnVK8ht6niF396WM7PeWGXHaEEz7CWpq3s6pJ8mimk3FWFA34yasu3a0DncT2/exec',
+    api: 'https://script.google.com/macros/s/AKfycbx6GLJ-pwrLhhUAtGunHwaNDYeh7K8zMmMFLi7vMRaSHo0W1jhhuETXvtO0ibVl0jW2/exec',
     veiculos: [
-        { nome: 'Toco', col: 2, eixos: 2 },
-        { nome: 'Truck', col: 3, eixos: 3 },
-        { nome: 'Bitruck', col: 4, eixos: 4 },
-        { nome: 'Carreta', col: 5, eixos: 5 }
+        { nome: 'Toco', eixos: 2, col: 2 },
+        { nome: 'Truck', eixos: 3, col: 3 },
+        { nome: 'Bitruck', eixos: 4, col: 4 },
+        { nome: 'Carreta', eixos: 5, col: 5 }
     ]
 };
 
-let baseDados = { cidades: [], antt: {} };
+let base = { cidades: [], antt: {} };
 
 const app = {
     init: async () => {
-        const resp = await fetch(CONFIG.api);
-        const data = await resp.json();
-        baseDados.cidades = data.cidades;
-        baseDados.antt = data.antt;
-        document.getElementById('dataSync').innerText = `ANTT Oficial: ${data.dataAtualizacao}`;
-        app.render();
+        const r = await fetch(CONFIG.api);
+        base = await r.json();
+        document.getElementById('status').innerText = base.info;
+        app.renderSel();
     },
 
-    render: () => {
-        const sel = document.getElementById('selCidade');
-        sel.innerHTML = '<option value="">Selecione...</option>';
-        baseDados.cidades.forEach((c, i) => {
-            const opt = document.createElement('option');
-            opt.value = i;
-            opt.innerText = `${c[0]} (${c[1]} KM)`;
-            sel.appendChild(opt);
+    renderSel: () => {
+        const s = document.getElementById('selCidade');
+        s.innerHTML = '<option value="">Selecione a Cidade...</option>';
+        base.cidades.forEach((c, i) => {
+            const o = document.createElement('option');
+            o.value = i; o.innerText = `${c[0]} (${c[1]} KM)`;
+            s.appendChild(o);
         });
     },
 
-    calc: (i) => {
+    porCidade: (i) => {
         if(!i) return;
-        const cidade = baseDados.cidades[i];
-        const kmTotal = parseFloat(cidade[1]) * 2;
-        document.getElementById('kmTotal').innerText = kmTotal;
-        document.getElementById('resultado').style.display = 'block';
+        document.getElementById('kmMan').value = '';
+        app.calcular(parseFloat(base.cidades[i][1]), base.cidades[i]);
+    },
+
+    porKm: (km) => {
+        if(!km) return;
+        document.getElementById('selCidade').value = '';
+        app.calcular(parseFloat(km), null);
+    },
+
+    calcular: (kmIda, row) => {
+        // REGRA PADRÃO: O sistema recebe KM de Ida e calcula o ciclo completo
+        const kmTotal = kmIda * 2;
+        document.getElementById('displayKM').style.display = 'block';
+        document.getElementById('kmTotal').innerText = kmTotal.toLocaleString();
 
         let html = '';
         CONFIG.veiculos.forEach(v => {
-            let meuPreco = parseFloat(String(cidade[v.col]).replace(/\./g,'').replace(',','.'));
-            let coef = baseDados.antt[v.eixos];
-            let precoAntt = (coef.ccd * kmTotal) + coef.cc;
+            const c = base.antt[v.eixos];
+            
+            // FÓRMULA OFICIAL (Bate com o seu print da ANTT):
+            // Ida = (KM * CCD) + CC  |  Volta = (KM * CCD) * 0.92
+            const valorAntt = ((kmIda * c.ccd) + c.cc) + ((kmIda * c.ccd) * 0.92);
+
+            let meuPreco = row ? parseFloat(String(row[v.col]).replace(/\./g,'').replace(',','.')) : 0;
 
             html += `
-                <div class="row-frete">
-                    <div>
-                        <span class="label-veiculo">${v.nome}</span>
-                        <span class="val-antt">MÍNIMO ANTT: R$ ${precoAntt.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
+                <div class="item">
+                    <div class="v-info">
+                        <span class="v-nome">${v.nome}</span>
+                        <span class="v-antt">MÍNIMO ANTT: R$ ${valorAntt.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
                     </div>
-                    <div style="text-align: right">
-                        <span class="val-meu">R$ ${meuPreco.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
-                        ${meuPreco < precoAntt ? '<br><span class="alerta">Abaixo da ANTT</span>' : ''}
+                    <div class="v-prices">
+                        <span class="price-final">${meuPreco > 0 ? 'R$ ' + meuPreco.toLocaleString('pt-BR', {minimumFractionDigits: 2}) : '---'}</span>
+                        ${(meuPreco > 0 && meuPreco < valorAntt) ? '<span class="alerta">Abaixo da Lei</span>' : ''}
                     </div>
                 </div>`;
         });
         document.getElementById('lista').innerHTML = html;
     }
 };
-
 window.onload = app.init;
 </script>
 </body>
