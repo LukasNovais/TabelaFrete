@@ -3,28 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Frete Pro - Inteligente</title>
+    <link rel="icon" type="image/png" href="LINK_DO_SEU_FAVICON_AQUI.png">
+    <title>Calculador de Fretes - Transportadora Pro</title>
     <style>
-        :root { --blue: #004a99; --green: #28a745; --orange: #f39c12; --bg: #f4f7f6; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); padding: 15px; margin: 0; }
+        :root { --blue: #004a99; --orange: #f39c12; --bg: #f4f7f6; --text-dark: #202124; --text-gray: #5f6368; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); margin: 0; padding: 15px; }
         .card { max-width: 650px; margin: auto; background: white; border-radius: 16px; box-shadow: 0 4px 25px rgba(0,0,0,0.1); padding: 25px; }
+        
+        /* Cabeçalho */
+        .header { display: flex; align-items: center; justify-content: center; gap: 20px; border-bottom: 2px solid #f1f1f1; margin-bottom: 20px; padding-bottom: 15px; }
+        .logo-img { max-height: 70px; width: auto; }
+        .header-titles { text-align: left; }
+        
         .input-row { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; }
         .field { flex: 1; min-width: 200px; }
         label { font-size: 11px; font-weight: 800; color: #666; text-transform: uppercase; margin-bottom: 8px; display: block; }
         select, input { width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 16px; box-sizing: border-box; }
-        .km-panel { background: var(--blue); color: white; padding: 15px; border-radius: 12px; text-align: center; margin-bottom: 20px; }
+
+        .km-panel { background: var(--blue); color: white; padding: 15px; border-radius: 12px; text-align: center; margin-bottom: 25px; }
         .km-val { font-size: 28px; font-weight: 900; display: block; }
-        .item { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid #f1f1f1; }
-        .v-nome { font-weight: 600; font-size: 18px; color: #202124; }
-        .v-antt { font-size: 11px; color: var(--orange); font-weight: 600;  text-transform: uppercase; }
+
+        .table-title { font-size: 13px; font-weight: 800; color: var(--blue); text-transform: uppercase; border-left: 4px solid var(--blue); padding-left: 10px; margin-bottom: 20px; letter-spacing: 0.5px; }
+
+        /* Estilização Profissional dos Valores */
+        .item { display: flex; justify-content: space-between; align-items: center; padding: 18px 0; border-bottom: 1px solid #f1f1f1; }
+        .v-nome { font-weight: 600; font-size: 18px; color: var(--text-dark); }
+        .v-antt { font-size: 11px; color: var(--orange); font-weight: 600; text-transform: uppercase; margin-top: 4px; display: block; }
+        
+        .v-prices { text-align: right; }
         .price-final { font-size: 24px; font-weight: 700; letter-spacing: -0.5px; color: #1a1a1a; display: block; }
-        .v-litro { font-size: 13px; color: #5f6368; font-weight: 500; margin-top: 2px; display: block; }
-        .alerta { color: #e74c3c; font-size: 10px; font-weight: 900; text-transform: uppercase; display: block; }
+        .v-litro { font-size: 13px; color: var(--text-gray); font-weight: 500; margin-top: 2px; display: block; }
+        .alerta { color: #d93025; font-size: 10px; font-weight: 900; text-transform: uppercase; display: block; margin-top: 4px; }
     </style>
 </head>
 <body>
 
 <div class="card">
+    <div class="header">
+        <img src="LINK_DA_SUA_LOGOMARCA.png" alt="Logo" class="logo-img">
+        <div class="header-titles">
+            <h2 style="margin:0; color: var(--blue);">Cálculo de Frete e ANTT</h2>
+            <span id="status" style="font-size: 10px; color: #999;">Sincronizando dados oficiais...</span>
+        </div>
+    </div>
+
     <div class="input-row">
         <div class="field">
             <label>Cidade Destino</label>
@@ -37,16 +59,19 @@
     </div>
 
     <div id="displayKM" class="km-panel" style="display:none">
-        <span style="font-size: 11px; opacity: 0.8; font-weight: bold;">TOTAL IDA + VOLTA</span>
+        <span style="font-size: 11px; opacity: 0.8; font-weight: bold; text-transform: uppercase;">Total Ida + Volta</span>
         <span class="km-val"><span id="kmTotal">0</span> KM</span>
     </div>
 
-    <div id="lista"></div>
+    <div id="resultadoContainer" style="display:none">
+        <div class="table-title">Tabela de Valores por Perfil de Veículo</div>
+        <div id="lista"></div>
+    </div>
 </div>
 
 <script>
 const CONFIG = {
-    api: 'https://script.google.com/macros/s/AKfycbzTNAXlUV8axvHQ4AT4hgDudVJy_xoTQBY5-wcqETsqxC5j3zobOVfgcuyfU9OIYhQA/exec',
+    api: 'SUA_URL_DA_API_AQUI',
     veiculos: [
         { nome: 'Toco', eixos: 2, col: 2, vol: 10000 },
         { nome: 'Truck', eixos: 3, col: 3, vol: 15000 },
@@ -61,6 +86,7 @@ const app = {
     init: async () => {
         const r = await fetch(CONFIG.api);
         base = await r.json();
+        document.getElementById('status').innerText = base.info;
         app.renderSel();
     },
 
@@ -84,7 +110,6 @@ const app = {
         if(!km) return;
         document.getElementById('selCidade').value = '';
         const kmIda = parseFloat(km);
-        // Busca na planilha o preço da cidade que tem o KM mais próximo do digitado
         const linhaProxima = base.cidades.reduce((prev, curr) => 
             Math.abs(curr[1] - kmIda) < Math.abs(prev[1] - kmIda) ? curr : prev
         );
@@ -94,12 +119,12 @@ const app = {
     calcular: (kmIda, row) => {
         const kmTotal = kmIda * 2;
         document.getElementById('displayKM').style.display = 'block';
+        document.getElementById('resultadoContainer').style.display = 'block';
         document.getElementById('kmTotal').innerText = kmTotal.toLocaleString();
 
         let html = '';
         CONFIG.veiculos.forEach(v => {
             const c = base.antt[v.eixos];
-            // Fórmula: Ida + Retorno Vazio (92% do deslocamento)
             const valorAntt = ((kmIda * c.ccd) + c.cc) + ((kmIda * c.ccd) * 0.92);
             const meuPreco = parseFloat(String(row[v.col]).replace(/\./g,'').replace(',','.'));
             const valorPorLitro = meuPreco / v.vol;
@@ -108,9 +133,9 @@ const app = {
                 <div class="item">
                     <div>
                         <span class="v-nome">${v.nome}</span>
-                        <span class="v-antt">ANTT: R$ ${valorAntt.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
+                        <span class="v-antt">Mínimo ANTT: R$ ${valorAntt.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
                     </div>
-                    <div style="text-align:right">
+                    <div class="v-prices">
                         <span class="price-final">R$ ${meuPreco.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
                         <span class="v-litro">R$ ${valorPorLitro.toFixed(3)}/L</span>
                         ${meuPreco < valorAntt ? '<span class="alerta">Abaixo da Lei</span>' : ''}
