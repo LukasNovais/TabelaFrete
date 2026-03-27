@@ -2,176 +2,107 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Frete Inteligente Pro API - Automação ANTT</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frete Automático - ANTT Realtime</title>
     <style>
-        :root { --primary: #007bff; --success: #28a745; --danger: #dc3545; --warning: #f39c12; --bg: #f8f9fa; --card-bg: #ffffff; --text: #212529; --border: #dee2e6; --radius: 12px; }
-        body { font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; padding: 15px; background: var(--bg); color: var(--text); }
-        .container { max-width: 700px; margin: auto; }
-        .card { background: var(--card-bg); border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); overflow: hidden; border: 1px solid var(--border); }
-        .tabs { display: flex; background: #f1f3f5; padding: 6px; gap: 6px; }
-        .tab { flex: 1; padding: 12px; text-align: center; cursor: pointer; font-weight: 600; color: #6c757d; border-radius: 10px; transition: 0.2s; font-size: 14px; }
-        .tab.active { background: var(--card-bg); color: var(--primary); box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
-        .content { padding: 20px; display: none; }
-        .content.active { display: block; }
-        .input-row { display: flex; gap: 10px; align-items: flex-end; margin-bottom: 15px; }
-        label { font-weight: 700; font-size: 11px; display: block; margin-bottom: 5px; color: #666; text-transform: uppercase; }
-        select, input { width: 100%; padding: 12px; border: 1.5px solid var(--border); border-radius: var(--radius); font-size: 16px; box-sizing: border-box; }
-        .km-destaque { color: var(--primary); font-weight: 800; text-align: center; display: block; padding: 15px; background: #f0f7ff; border-radius: var(--radius); margin: 15px 0; font-size: 20px; border: 1px solid #d0e4ff; }
-        .res-item { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid #f1f1f1; }
-        .veiculo-info { display: flex; flex-direction: column; }
-        .veiculo-nome { font-weight: 700; color: #495057; font-size: 16px; }
-        .antt-box { font-size: 11px; color: var(--warning); font-weight: 700; background: #fffcf0; padding: 2px 6px; border-radius: 4px; border: 1px solid #ffeeba; margin-top: 4px; display: inline-block; }
-        .valor-container { text-align: right; }
-        .valor-final { font-weight: 800; color: var(--success); font-size: 19px; display: block; }
-        .alerta-defasagem { color: var(--danger); font-size: 10px; font-weight: bold; text-transform: uppercase; display: block; }
-        .mapa { height: 300px; width: 100%; border-radius: var(--radius); margin-top: 15px; border: 1px solid var(--border); }
+        :root { --primary: #004a99; --success: #2ecc71; --warning: #f1c40f; --bg: #f4f7f6; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); padding: 20px; margin: 0; }
+        .card { max-width: 600px; margin: auto; background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        .header { text-align: center; border-bottom: 2px solid #eee; margin-bottom: 20px; padding-bottom: 10px; }
+        .update-badge { font-size: 10px; background: #e0e0e0; padding: 4px 8px; border-radius: 10px; color: #666; }
+        select, input { width: 100%; padding: 15px; margin: 10px 0; border: 2px solid #eee; border-radius: 12px; font-size: 16px; outline: none; }
+        .result-box { margin-top: 20px; background: #f9f9f9; border-radius: 15px; padding: 15px; border-left: 5px solid var(--primary); }
+        .row-frete { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #eee; }
+        .label-veiculo { font-weight: bold; color: #333; }
+        .val-antt { font-size: 11px; color: var(--warning); font-weight: bold; display: block; }
+        .val-meu { font-size: 18px; font-weight: 900; color: var(--success); }
+        .alerta { font-size: 10px; color: red; font-weight: bold; text-transform: uppercase; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <div class="card">
-        <div class="tabs">
-            <div id="tabP" class="tab active" onclick="app.switchTab('abaCidades')">Preços e ANTT</div>
-            <div id="tabM" class="tab" onclick="app.switchTab('abaMapa')">Roteirizador</div>
-        </div>
+<div class="card">
+    <div class="header">
+        <h2 style="margin:0; color: var(--primary);">Transportadora Pro</h2>
+        <span id="dataSync" class="update-badge">Sincronizando ANTT...</span>
+    </div>
 
-        <div id="abaCidades" class="content active">
-            <div class="input-row">
-                <div style="flex: 2;">
-                    <label>Selecione o Destino</label>
-                    <select id="selectCidade" onchange="app.calcPorCidade(this.value)">
-                        <option value="">Carregando dados oficiais...</option>
-                    </select>
-                </div>
-                <div style="flex: 1;">
-                    <label>KM IDA Manual</label>
-                    <input type="number" id="inputKmManual" placeholder="KM" oninput="app.calcPorKm(this.value)">
-                </div>
-            </div>
+    <label>Cidade de Destino</label>
+    <select id="selCidade" onchange="app.calc(this.value)">
+        <option>Carregando cidades...</option>
+    </select>
 
-            <div id="resPlanilha" style="display:none">
-                <span class="km-destaque" id="kmDisplayP">0 KM</span>
-                <div id="listaFretesP"></div>
-                <div id="mapP" class="mapa"></div>
-            </div>
+    <div id="resultado" style="display:none">
+        <div style="text-align: center; font-weight: bold; color: var(--primary); margin: 10px 0;">
+            KM Total (Ida/Volta): <span id="kmTotal">0</span> KM
         </div>
-        <div id="abaMapa" class="content">Roteirizador em carga...</div>
+        <div id="lista"></div>
     </div>
 </div>
 
 <script>
 const CONFIG = {
-    urlAPI: 'https://script.google.com/macros/s/AKfycbw8hUcZd5JdwZOYSLH8I0t-jmUo_yr-2AODXfcoFLcHvj7sX7Be44yF1kLHZg7pBCyR/exec',
-    origem: [-16.7014123, -49.1130296],
+    api: 'https://script.google.com/macros/s/AKfycbxGk5uWnVK8ht6niF396WM7PeWGXHaEEz7CWpq3s6pJ8mimk3FWFA34yasu3a0DncT2/exec',
     veiculos: [
-        { label: 'Toco', col: 2, vol: 10000, eixos: 2 }, 
-        { label: 'Truck', col: 3, vol: 15000, eixos: 3 },
-        { label: 'Bitruck', col: 4, vol: 20000, eixos: 4 }, 
-        { label: 'Carreta', col: 5, vol: 30000, eixos: 5 }
-    ],
-    anttOficial: {} 
+        { nome: 'Toco', col: 2, eixos: 2 },
+        { nome: 'Truck', col: 3, eixos: 3 },
+        { nome: 'Bitruck', col: 4, eixos: 4 },
+        { nome: 'Carreta', col: 5, eixos: 5 }
+    ]
 };
 
-let state = { db: [], mapP: null, polyP: null, markerP: null };
+let baseDados = { cidades: [], antt: {} };
 
 const app = {
-    init: () => { app.initMap(); app.fetchData(); },
-
-    initMap: () => {
-        state.mapP = L.map('mapP', { attributionControl: false, zoomControl: false }).setView(CONFIG.origem, 7);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(state.mapP);
+    init: async () => {
+        const resp = await fetch(CONFIG.api);
+        const data = await resp.json();
+        baseDados.cidades = data.cidades;
+        baseDados.antt = data.antt;
+        document.getElementById('dataSync').innerText = `ANTT Oficial: ${data.dataAtualizacao}`;
+        app.render();
     },
 
-    fetchData: async () => {
-        const response = await fetch(CONFIG.urlAPI);
-        const data = await response.json();
-        state.db = data.cidades;
-        CONFIG.anttOficial = data.antt;
-        app.renderSelect();
-    },
-
-    renderSelect: () => {
-        const select = document.getElementById('selectCidade');
-        select.innerHTML = '<option value="">Selecione a cidade...</option>';
-        state.db.sort((a,b) => String(a[0]).localeCompare(String(b[0]))).forEach((row, idx) => {
+    render: () => {
+        const sel = document.getElementById('selCidade');
+        sel.innerHTML = '<option value="">Selecione...</option>';
+        baseDados.cidades.forEach((c, i) => {
             const opt = document.createElement('option');
-            opt.value = idx;
-            opt.innerText = `${row[0]} (${row[1]} KM)`;
-            select.appendChild(opt);
+            opt.value = i;
+            opt.innerText = `${c[0]} (${c[1]} KM)`;
+            sel.appendChild(opt);
         });
     },
 
-    calcPorCidade: (idx) => {
-        if (!idx) return;
-        document.getElementById('inputKmManual').value = '';
-        app.displayResult(state.db[idx], true);
-    },
-
-    calcPorKm: (kmIda) => {
-        if (!kmIda) return;
-        document.getElementById('selectCidade').value = '';
-        let target = parseFloat(kmIda);
-        let closestRow = state.db.reduce((prev, curr) => {
-            return (Math.abs(curr[1] - target) < Math.abs(prev[1] - target) ? curr : prev);
-        });
-        let virtualRow = [...closestRow];
-        virtualRow[1] = target;
-        app.displayResult(virtualRow, false);
-    },
-
-    displayResult: (row, drawRoute) => {
-        const kmIda = parseFloat(String(row[1]).replace(',', '.'));
-        const kmTotal = kmIda * 2;
-        document.getElementById('resPlanilha').style.display = 'block';
-        document.getElementById('kmDisplayP').innerText = `Total Ida/Volta: ${kmTotal} KM`;
+    calc: (i) => {
+        if(!i) return;
+        const cidade = baseDados.cidades[i];
+        const kmTotal = parseFloat(cidade[1]) * 2;
+        document.getElementById('kmTotal').innerText = kmTotal;
+        document.getElementById('resultado').style.display = 'block';
 
         let html = '';
         CONFIG.veiculos.forEach(v => {
-            let valorNum = parseFloat(String(row[v.col]).replace(/\./g, '').replace(',', '.'));
-            let coef = CONFIG.anttOficial[v.eixos];
-            let valorAntt = (coef.ccd * kmTotal) + coef.cc;
-            let defasagem = valorNum < valorAntt;
+            let meuPreco = parseFloat(String(cidade[v.col]).replace(/\./g,'').replace(',','.'));
+            let coef = baseDados.antt[v.eixos];
+            let precoAntt = (coef.ccd * kmTotal) + coef.cc;
 
             html += `
-                <div class="res-item">
-                    <div class="veiculo-info">
-                        <span class="veiculo-nome">${v.label}</span>
-                        <span class="antt-box">ANTT: R$ ${valorAntt.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
+                <div class="row-frete">
+                    <div>
+                        <span class="label-veiculo">${v.nome}</span>
+                        <span class="val-antt">MÍNIMO ANTT: R$ ${precoAntt.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
                     </div>
-                    <div class="valor-container">
-                        <span class="valor-final">R$ ${valorNum.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
-                        ${defasagem ? '<span class="alerta-defasagem">Abaixo da ANTT</span>' : ''}
+                    <div style="text-align: right">
+                        <span class="val-meu">R$ ${meuPreco.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
+                        ${meuPreco < precoAntt ? '<br><span class="alerta">Abaixo da ANTT</span>' : ''}
                     </div>
                 </div>`;
         });
-        document.getElementById('listaFretesP').innerHTML = html;
-        if(drawRoute) app.updateMap(row[0]);
-    },
-
-    updateMap: async (cidade) => {
-        const geoReq = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cidade)},Goias&limit=1`);
-        const geoData = await geoReq.json();
-        if (geoData[0]) {
-            const dest = [geoData[0].lat, geoData[0].lon];
-            const rReq = await fetch(`https://router.project-osrm.org/route/v1/driving/${CONFIG.origem[1]},${CONFIG.origem[0]};${dest[1]},${dest[0]}?overview=full&geometries=geojson`);
-            const rData = await rReq.json();
-            if (state.polyP) state.mapP.removeLayer(state.polyP);
-            state.polyP = L.geoJSON(rData.routes[0].geometry, { color: '#007bff', weight: 5 }).addTo(state.mapP);
-            state.mapP.fitBounds(state.polyP.getBounds(), { padding: [30, 30] });
-        }
-    },
-
-    switchTab: (id) => {
-        document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        document.getElementById(id).classList.add('active');
-        document.getElementById(id === 'abaCidades' ? 'tabP' : 'tabM').classList.add('active');
+        document.getElementById('lista').innerHTML = html;
     }
 };
+
 window.onload = app.init;
 </script>
 </body>
