@@ -3,17 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Frete Inteligente Pro API</title>
-    
+    <title>Frete Inteligente Pro API - Automação ANTT</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
     <style>
-        :root {
-            --primary: #007bff; --success: #28a745; --danger: #dc3545; --warning: #f39c12;
-            --bg: #f8f9fa; --card-bg: #ffffff; --text: #212529;
-            --border: #dee2e6; --radius: 12px;
-        }
+        :root { --primary: #007bff; --success: #28a745; --danger: #dc3545; --warning: #f39c12; --bg: #f8f9fa; --card-bg: #ffffff; --text: #212529; --border: #dee2e6; --radius: 12px; }
         body { font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; padding: 15px; background: var(--bg); color: var(--text); }
         .container { max-width: 700px; margin: auto; }
         .card { background: var(--card-bg); border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); overflow: hidden; border: 1px solid var(--border); }
@@ -29,12 +23,11 @@
         .res-item { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid #f1f1f1; }
         .veiculo-info { display: flex; flex-direction: column; }
         .veiculo-nome { font-weight: 700; color: #495057; font-size: 16px; }
-        .valor-litro { color: #666; font-size: 13px; font-weight: 600; margin-top: 2px; }
+        .antt-box { font-size: 11px; color: var(--warning); font-weight: 700; background: #fffcf0; padding: 2px 6px; border-radius: 4px; border: 1px solid #ffeeba; margin-top: 4px; display: inline-block; }
         .valor-container { text-align: right; }
         .valor-final { font-weight: 800; color: var(--success); font-size: 19px; display: block; }
-        .antt-box { font-size: 12px; color: var(--warning); font-weight: 700; background: #fffcf0; padding: 2px 6px; border-radius: 4px; border: 1px solid #ffeeba; margin-top: 4px; display: inline-block; }
+        .alerta-defasagem { color: var(--danger); font-size: 10px; font-weight: bold; text-transform: uppercase; display: block; }
         .mapa { height: 300px; width: 100%; border-radius: var(--radius); margin-top: 15px; border: 1px solid var(--border); }
-        .status-msg { font-size: 13px; font-weight: 600; text-align: center; margin: 10px 0; display: none; }
     </style>
 </head>
 <body>
@@ -42,41 +35,37 @@
 <div class="container">
     <div class="card">
         <div class="tabs">
-            <div id="tabP" class="tab active" onclick="app.switchTab('abaCidades')">Cálculo Rápido</div>
+            <div id="tabP" class="tab active" onclick="app.switchTab('abaCidades')">Preços e ANTT</div>
             <div id="tabM" class="tab" onclick="app.switchTab('abaMapa')">Roteirizador</div>
         </div>
 
         <div id="abaCidades" class="content active">
             <div class="input-row">
                 <div style="flex: 2;">
-                    <label>Cidade de Destino</label>
+                    <label>Selecione o Destino</label>
                     <select id="selectCidade" onchange="app.calcPorCidade(this.value)">
-                        <option value="">Conectando à API...</option>
+                        <option value="">Carregando dados oficiais...</option>
                     </select>
                 </div>
                 <div style="flex: 1;">
                     <label>KM IDA Manual</label>
-                    <input type="number" id="inputKmManual" placeholder="Ex: 150" oninput="app.calcPorKm(this.value)">
+                    <input type="number" id="inputKmManual" placeholder="KM" oninput="app.calcPorKm(this.value)">
                 </div>
             </div>
 
             <div id="resPlanilha" style="display:none">
-                <span class="km-destaque" id="kmDisplayP">Total: 0 KM</span>
+                <span class="km-destaque" id="kmDisplayP">0 KM</span>
                 <div id="listaFretesP"></div>
-                <div id="statusP" class="status-msg"></div>
                 <div id="mapP" class="mapa"></div>
             </div>
         </div>
-
-        <div id="abaMapa" class="content">
-            <p style="text-align: center; color: #999;">Aba Roteirizador (Em desenvolvimento)</p>
-        </div>
+        <div id="abaMapa" class="content">Roteirizador em carga...</div>
     </div>
 </div>
 
 <script>
 const CONFIG = {
-    urlAPI: 'https://script.google.com/macros/s/AKfycbxoh771pEnx1osIbbEABeQQZU8n_c7EcBOuomcWA5zQvZ84cBAcOGXmTKr4SdFxQ76B/exec',
+    urlAPI: 'https://script.google.com/macros/s/AKfycbw8hUcZd5JdwZOYSLH8I0t-jmUo_yr-2AODXfcoFLcHvj7sX7Be44yF1kLHZg7pBCyR/exec',
     origem: [-16.7014123, -49.1130296],
     veiculos: [
         { label: 'Toco', col: 2, vol: 10000, eixos: 2 }, 
@@ -84,47 +73,33 @@ const CONFIG = {
         { label: 'Bitruck', col: 4, vol: 20000, eixos: 4 }, 
         { label: 'Carreta', col: 5, vol: 30000, eixos: 5 }
     ],
-    // TABELA ANTT ATUALIZADA - CARGA PERIGOSA A GRANEL (Coeficientes Médios)
-    antt: {
-        2: { ccd: 5.0932, cc: 472.19 }, // 2 Eixos
-        3: { ccd: 5.3789, cc: 603.95 }, // 3 Eixos
-        4: { ccd: 7.2215, cc: 676.01 }, // 4 Eixos
-        5: { ccd: 8.0431, cc: 745.33 }  // 5 Eixos
-    }
+    anttOficial: {} 
 };
 
 let state = { db: [], mapP: null, polyP: null, markerP: null };
 
 const app = {
-    init: () => { 
-        app.initMap(); 
-        app.fetchData(); 
-    },
+    init: () => { app.initMap(); app.fetchData(); },
 
     initMap: () => {
         state.mapP = L.map('mapP', { attributionControl: false, zoomControl: false }).setView(CONFIG.origem, 7);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(state.mapP);
-        L.marker(CONFIG.origem).addTo(state.mapP);
     },
 
     fetchData: async () => {
-        try {
-            const response = await fetch(CONFIG.urlAPI);
-            const data = await response.json();
-            state.db = data.filter(row => row[0] && row[1]);
-            app.renderSelect();
-        } catch (e) {
-            console.error("Erro ao carregar API:", e);
-            document.getElementById('selectCidade').innerHTML = '<option>Erro ao carregar dados</option>';
-        }
+        const response = await fetch(CONFIG.urlAPI);
+        const data = await response.json();
+        state.db = data.cidades;
+        CONFIG.anttOficial = data.antt;
+        app.renderSelect();
     },
 
     renderSelect: () => {
         const select = document.getElementById('selectCidade');
         select.innerHTML = '<option value="">Selecione a cidade...</option>';
-        state.db.sort((a,b) => String(a[0]).localeCompare(String(b[0]))).forEach((row) => {
+        state.db.sort((a,b) => String(a[0]).localeCompare(String(b[0]))).forEach((row, idx) => {
             const opt = document.createElement('option');
-            opt.value = state.db.indexOf(row);
+            opt.value = idx;
             opt.innerText = `${row[0]} (${row[1]} KM)`;
             select.appendChild(opt);
         });
@@ -141,87 +116,52 @@ const app = {
         document.getElementById('selectCidade').value = '';
         let target = parseFloat(kmIda);
         let closestRow = state.db.reduce((prev, curr) => {
-            let currKm = parseFloat(String(curr[1]).replace(',', '.'));
-            let prevKm = parseFloat(String(prev[1]).replace(',', '.'));
-            return (Math.abs(currKm - target) < Math.abs(prevKm - target) ? curr : prev);
+            return (Math.abs(curr[1] - target) < Math.abs(prev[1] - target) ? curr : prev);
         });
-        if (closestRow) {
-            // Criamos uma linha virtual com o KM manual do usuário, mas mantendo preços da linha mais próxima
-            let virtualRow = [...closestRow];
-            virtualRow[1] = target; 
-            app.displayResult(virtualRow, false);
-            app.showStatus('P', `Baseado em ${target} KM manual.`, 'primary');
-        }
-    },
-
-    // FUNÇÃO CORE DE CÁLCULO ANTT
-    calcularValorANTT: (kmTotal, eixos) => {
-        const coef = CONFIG.antt[eixos];
-        if(!coef) return 0;
-        // Fórmula: (Coeficiente Deslocamento * KM) + Coeficiente Carga
-        const resultado = (coef.ccd * kmTotal) + coef.cc;
-        return resultado;
+        let virtualRow = [...closestRow];
+        virtualRow[1] = target;
+        app.displayResult(virtualRow, false);
     },
 
     displayResult: (row, drawRoute) => {
         const kmIda = parseFloat(String(row[1]).replace(',', '.'));
         const kmTotal = kmIda * 2;
-        
         document.getElementById('resPlanilha').style.display = 'block';
-        document.getElementById('kmDisplayP').innerText = `Total (Ida e Volta): ${kmTotal.toFixed(1)} KM`;
+        document.getElementById('kmDisplayP').innerText = `Total Ida/Volta: ${kmTotal} KM`;
 
         let html = '';
         CONFIG.veiculos.forEach(v => {
-            let valorRaw = row[v.col] || "0,00";
-            let valorLimpo = String(valorRaw).replace(/\./g, '').replace(',', '.');
-            let valorNum = parseFloat(valorLimpo);
-            let valorLitro = (valorNum / v.vol).toFixed(3);
-            
-            // Cálculo ANTT Específico
-            let valorANTT = app.calcularValorANTT(kmTotal, v.eixos);
+            let valorNum = parseFloat(String(row[v.col]).replace(/\./g, '').replace(',', '.'));
+            let coef = CONFIG.anttOficial[v.eixos];
+            let valorAntt = (coef.ccd * kmTotal) + coef.cc;
+            let defasagem = valorNum < valorAntt;
 
             html += `
                 <div class="res-item">
                     <div class="veiculo-info">
-                        <span class="veiculo-nome">${v.label} <span class="valor-litro">(R$ ${valorLitro}/L)</span></span>
-                        <span class="antt-box">ANTT Mínimo: R$ ${valorANTT.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        <span class="veiculo-nome">${v.label}</span>
+                        <span class="antt-box">ANTT: R$ ${valorAntt.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
                     </div>
                     <div class="valor-container">
-                        <span class="valor-final">R$ ${valorNum.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                        <span class="valor-final">R$ ${valorNum.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
+                        ${defasagem ? '<span class="alerta-defasagem">Abaixo da ANTT</span>' : ''}
                     </div>
                 </div>`;
         });
         document.getElementById('listaFretesP').innerHTML = html;
-        
-        if (drawRoute) {
-            app.updateMap(row[0]);
-        } else {
-            if(state.polyP) { 
-                state.mapP.removeLayer(state.polyP); 
-                if(state.markerP) state.mapP.removeLayer(state.markerP); 
-            }
-        }
+        if(drawRoute) app.updateMap(row[0]);
     },
 
     updateMap: async (cidade) => {
-        app.showStatus('P', 'Traçando rota...', 'primary');
-        try {
-            const geoReq = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cidade)},Goias&limit=1`);
-            const geoData = await geoReq.json();
-            if (geoData[0]) {
-                const dest = [geoData[0].lat, geoData[0].lon];
-                const rReq = await fetch(`https://router.project-osrm.org/route/v1/driving/${CONFIG.origem[1]},${CONFIG.origem[0]};${dest[1]},${dest[0]}?overview=full&geometries=geojson`);
-                const rData = await rReq.json();
-                if (state.polyP) state.mapP.removeLayer(state.polyP);
-                if (state.markerP) state.mapP.removeLayer(state.markerP);
-                state.polyP = L.geoJSON(rData.routes[0].geometry, { color: '#007bff', weight: 5 }).addTo(state.mapP);
-                state.markerP = L.marker(dest).addTo(state.mapP);
-                state.mapP.fitBounds(state.polyP.getBounds(), { padding: [30, 30] });
-                state.mapP.invalidateSize();
-                app.showStatus('P', '', '');
-            }
-        } catch (e) { 
-            app.showStatus('P', 'Erro ao carregar rota.', 'danger'); 
+        const geoReq = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cidade)},Goias&limit=1`);
+        const geoData = await geoReq.json();
+        if (geoData[0]) {
+            const dest = [geoData[0].lat, geoData[0].lon];
+            const rReq = await fetch(`https://router.project-osrm.org/route/v1/driving/${CONFIG.origem[1]},${CONFIG.origem[0]};${dest[1]},${dest[0]}?overview=full&geometries=geojson`);
+            const rData = await rReq.json();
+            if (state.polyP) state.mapP.removeLayer(state.polyP);
+            state.polyP = L.geoJSON(rData.routes[0].geometry, { color: '#007bff', weight: 5 }).addTo(state.mapP);
+            state.mapP.fitBounds(state.polyP.getBounds(), { padding: [30, 30] });
         }
     },
 
@@ -230,17 +170,8 @@ const app = {
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
         document.getElementById(id).classList.add('active');
         document.getElementById(id === 'abaCidades' ? 'tabP' : 'tabM').classList.add('active');
-        if(id === 'abaCidades' && state.mapP) setTimeout(() => state.mapP.invalidateSize(), 200);
-    },
-
-    showStatus: (aba, msg, type) => {
-        const el = document.getElementById(`status${aba}`);
-        el.innerText = msg;
-        el.style.display = msg ? 'block' : 'none';
-        el.style.color = type === 'danger' ? 'var(--danger)' : 'var(--primary)';
     }
 };
-
 window.onload = app.init;
 </script>
 </body>
