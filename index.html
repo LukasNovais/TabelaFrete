@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calculador de Frete Pro - Funções Permanentes</title>
+    <title>Calculador de Fretes Pro</title>
     <style>
         :root { --blue: #004a99; --orange: #f39c12; --bg: #f4f7f6; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 15px; }
@@ -24,7 +24,7 @@
     <h2 style="color:var(--blue); text-align:center; margin-top:0;">Calculador de Fretes</h2>
     
     <label>Cidade Destino</label>
-    <select id="selCidade" onchange="app.porCidade(this.value)"><option>Carregando...</option></select>
+    <select id="selCidade" onchange="app.porCidade(this.value)"><option value="">Carregando cidades...</option></select>
     
     <label>KM Ida (Manual)</label>
     <input type="number" id="kmMan" placeholder="Digite o KM..." oninput="app.porKm(this.value)">
@@ -34,45 +34,53 @@
 </div>
 
 <script>
-const api = 'https://script.google.com/macros/s/AKfycbz37YmUG7AeVmq1WTOcsdEv8dzle0nwTG316D5rCf8T4WPYNocBSflRSAMoZEyVolY/exec';
+// URL da sua última implantação
+const api = 'https://script.google.com/macros/s/AKfycbzebpgRnk20pfqEHHlUGm1UWiCN5kCnt6oETpYw7fhnQvuVviUIHaGVhOQ2WyQn--Eg/exec';
 let base = { cidades: [], antt: {} };
 
 const app = {
     init: () => {
-        const s = document.createElement('script');
-        s.src = `${api}?callback=app.setup`;
-        document.body.appendChild(s);
+        // Método infalível: Injeta os dados via tag script para burlar o erro de CORS
+        const script = document.createElement('script');
+        script.src = `${api}?callback=app.setup`;
+        document.body.appendChild(script);
     },
     setup: (data) => {
         base = data;
         const sel = document.getElementById('selCidade');
-        // FUNÇÃO 1: Ordem Alfabética mantendo índice original
-        const ord = base.cidades.map((c, i) => ({ n: c[0], k: c[1], id: i }))
-                      .sort((a, b) => String(a.n).localeCompare(String(b.n)));
+        
+        // FUNÇÃO PERMANENTE 1: Ordem Alfabética mantendo índice original (A4:A...)
+        const ord = base.cidades
+            .map((c, i) => ({ n: c[0], k: c[1], id: i }))
+            .filter(item => item.n !== "") // Remove linhas vazias
+            .sort((a, b) => String(a.n).localeCompare(String(b.n)));
+        
         let h = '<option value="">Selecione a Cidade...</option>';
         ord.forEach(x => h += `<option value="${x.id}">${x.n} (${x.k} KM)</option>`);
         sel.innerHTML = h;
     },
     porCidade: (id) => {
-        if(id === "") return;
+        if(id === "" || !base.cidades[id]) return;
         document.getElementById('kmMan').value = '';
         const row = base.cidades[id];
         app.calc(parseFloat(row[1]), row);
     },
     porKm: (val) => {
-        if(!val) return;
+        if(!val || base.cidades.length === 0) return;
         document.getElementById('selCidade').value = '';
-        const km = parseFloat(val);
-        // Busca a linha mais próxima para referenciar os preços
-        const row = base.cidades.reduce((p, c) => Math.abs(c[1]-km) < Math.abs(p[1]-km) ? c : p);
-        app.calc(km, row);
+        const kmIda = parseFloat(val);
+        // FUNÇÃO PERMANENTE 2: Busca a linha com KM mais próximo na planilha
+        const row = base.cidades.reduce((prev, curr) => 
+            Math.abs(curr[1] - kmIda) < Math.abs(prev[1] - kmIda) ? curr : prev
+        );
+        app.calc(kmIda, row);
     },
-    calc: (km, row) => {
-        const kmTotal = km * 2; // FUNÇÃO 2: Ida e Volta
+    calc: (kmIda, row) => {
+        const kmTotal = kmIda * 2; // IDA E VOLTA
         document.getElementById('displayKM').style.display = 'block';
-        document.getElementById('kmTotal').innerText = kmTotal.toLocaleString();
+        document.getElementById('kmTotal').innerText = kmTotal.toLocaleString('pt-BR');
         
-        // CONFIGURAÇÃO DOS VEÍCULOS (Volume para FUNÇÃO 3)
+        // Configurações de Frete de Venda (Colunas C, D, E, F) e Volumes (FUNÇÃO 3)
         const veiculos = [
             {n:'Toco', e:2, col:2, vol:10000}, {n:'Truck', e:3, col:3, vol:15000},
             {n:'Bitruck', e:4, col:4, vol:20000}, {n:'Carreta', e:5, col:5, vol:30000}
@@ -81,13 +89,13 @@ const app = {
         let h = '';
         veiculos.forEach(v => {
             const c = base.antt[v.e];
-            // FUNÇÃO 4: Cálculo ANTT (Ida + Volta Vazio 92%)
-            const vA = ((km * c.ccd) + c.cc) + ((km * c.ccd) * 0.92);
+            // FUNÇÃO PERMANENTE 4: Cálculo Mínimo ANTT
+            const vA = ((kmIda * c.ccd) + c.cc) + ((kmIda * c.ccd) * 0.92);
             
             let pP = row[v.col];
             if(typeof pP === 'string') pP = parseFloat(pP.replace(/\./g,'').replace(',','.'));
             
-            // FUNÇÃO 3: Valor por Litro
+            // FUNÇÃO PERMANENTE 3: Valor por Litro
             const vL = pP / v.vol;
 
             h += `<div class="item">
