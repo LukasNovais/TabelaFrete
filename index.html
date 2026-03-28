@@ -1,72 +1,3 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/png" href="LINK_DO_SEU_FAVICON_AQUI.png">
-    <title>Calculador de Fretes - Transportadora Pro</title>
-    <style>
-        :root { --blue: #004a99; --orange: #f39c12; --bg: #f4f7f6; --text-dark: #1a1a1a; --text-gray: #5f6368; }
-        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); margin: 0; padding: 15px; }
-        .card { max-width: 650px; margin: auto; background: white; border-radius: 16px; box-shadow: 0 4px 25px rgba(0,0,0,0.1); padding: 25px; }
-        
-        .header { display: flex; align-items: center; justify-content: center; gap: 20px; border-bottom: 2px solid #f1f1f1; margin-bottom: 20px; padding-bottom: 15px; }
-        .logo-img { max-height: 70px; width: auto; }
-        
-        .input-row { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; }
-        .field { flex: 1; min-width: 200px; }
-        label { font-size: 11px; font-weight: 800; color: #666; text-transform: uppercase; margin-bottom: 8px; display: block; }
-        select, input { width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 16px; box-sizing: border-box; outline: none; }
-
-        .km-panel { background: var(--blue); color: white; padding: 15px; border-radius: 12px; text-align: center; margin-bottom: 25px; display: none; }
-        .km-val { font-size: 28px; font-weight: 900; display: block; }
-
-        .table-title { font-size: 13px; font-weight: 800; color: var(--blue); text-transform: uppercase; border-left: 4px solid var(--blue); padding-left: 10px; margin-bottom: 20px; }
-
-        .item { display: flex; justify-content: space-between; align-items: center; padding: 18px 0; border-bottom: 1px solid #f1f1f1; }
-        .v-nome { font-weight: 600; font-size: 18px; color: var(--text-dark); }
-        .v-antt { font-size: 11px; color: var(--orange); font-weight: 600; text-transform: uppercase; margin-top: 4px; display: block; }
-        
-        .v-prices { text-align: right; }
-        .price-final { font-size: 24px; font-weight: 700; letter-spacing: -0.5px; color: var(--text-dark); display: block; }
-        .v-litro { font-size: 13px; color: var(--text-gray); font-weight: 500; margin-top: 2px; display: block; }
-        .alerta { color: #d93025; font-size: 10px; font-weight: 900; text-transform: uppercase; display: block; margin-top: 4px; }
-    </style>
-</head>
-<body>
-
-<div class="card">
-    <div class="header">
-        <img src="LINK_DA_SUA_LOGOMARCA.png" alt="Logo" class="logo-img">
-        <div class="header-titles">
-            <h2 style="margin:0; color: var(--blue);">Cálculo de Frete e ANTT</h2>
-            <span id="status" style="font-size: 10px; color: #999;">Sincronizando...</span>
-        </div>
-    </div>
-
-    <div class="input-row">
-        <div class="field">
-            <label>Cidade Destino</label>
-            <select id="selCidade" onchange="app.porCidade(this.value)"><option value="">Carregando...</option></select>
-        </div>
-        <div class="field">
-            <label>KM Ida (Manual)</label>
-            <input type="number" id="kmMan" placeholder="Ex: 360" oninput="app.porKm(this.value)">
-        </div>
-    </div>
-
-    <div id="displayKM" class="km-panel">
-        <span style="font-size: 11px; opacity: 0.8; font-weight: bold; text-transform: uppercase;">Total Ida + Volta</span>
-        <span class="km-val"><span id="kmTotal">0</span> KM</span>
-    </div>
-
-    <div id="resultadoContainer" style="display:none">
-        <div class="table-title">Tabela de Valores por Perfil de Veículo</div>
-        <div id="lista"></div>
-    </div>
-</div>
-
-<script>
 const CONFIG = {
     api: 'https://script.google.com/macros/s/AKfycbw_UAfJGiMh9-5Itnah3VF99TKCjXuxf00h8skugGP1GtXyrgXNhFFZ9PZK0Gi8nf-u/exec',
     veiculos: [
@@ -82,48 +13,48 @@ let base = { cidades: [], antt: {} };
 const app = {
     init: async () => {
         try {
-            const r = await fetch(CONFIG.api + '?t=' + new Date().getTime());
+            // Mudança crucial: redirecionamento manual para evitar erro de CORS
+            const r = await fetch(CONFIG.api, { method: 'GET', mode: 'cors', redirect: 'follow' });
             base = await r.json();
-            document.getElementById('status').innerText = base.info || "Sincronizado";
+            document.getElementById('status').innerText = base.info || "Conectado";
             app.renderSel();
         } catch (e) {
-            document.getElementById('status').innerText = "Erro na conexão";
+            document.getElementById('status').innerText = "Erro: Verifique a permissão do Script";
             console.error(e);
         }
     },
 
     renderSel: () => {
         const s = document.getElementById('selCidade');
-        if (!base.cidades || base.cidades.length === 0) return;
+        if (!base.cidades) return;
 
-        // Ordenação alfabética mantendo o vínculo com o índice original da planilha
-        const ordenadas = base.cidades
-            .map((dados, i) => ({ nome: dados[0], km: dados[1], idx: i }))
+        // Ordenação alfabética segura (preserva o índice original da planilha)
+        const listaOrd = base.cidades
+            .map((dados, i) => ({ nome: dados[0], km: dados[1], index: i }))
             .sort((a, b) => String(a.nome).localeCompare(String(b.nome)));
 
         let html = '<option value="">Selecione a Cidade...</option>';
-        ordenadas.forEach(item => {
-            html += `<option value="${item.idx}">${item.nome} (${item.km} KM)</option>`;
+        listaOrd.forEach(item => {
+            html += `<option value="${item.index}">${item.nome} (${item.km} KM)</option>`;
         });
         s.innerHTML = html;
     },
 
-    porCidade: (idx) => {
-        if (idx === "") return;
+    porCidade: (i) => {
+        if (i === "") return;
         document.getElementById('kmMan').value = '';
-        const row = base.cidades[idx];
-        app.calcular(parseFloat(row[1]), row);
+        const cidade = base.cidades[i];
+        app.calcular(parseFloat(cidade[1]), cidade);
     },
 
     porKm: (val) => {
         const kmIda = parseFloat(val);
         if (!kmIda) return;
         document.getElementById('selCidade').value = '';
-        // Busca a cidade mais próxima na planilha para puxar os preços de frete
-        const row = base.cidades.reduce((prev, curr) => 
+        const linha = base.cidades.reduce((prev, curr) => 
             Math.abs(curr[1] - kmIda) < Math.abs(prev[1] - kmIda) ? curr : prev
         );
-        app.calcular(kmIda, row);
+        app.calcular(kmIda, linha);
     },
 
     calcular: (kmIda, row) => {
@@ -135,35 +66,25 @@ const app = {
         let html = '';
         CONFIG.veiculos.forEach(v => {
             const c = base.antt[v.eixos];
-            // Fórmula ANTT: Ida + Retorno Vazio (92%)
             const vAntt = ((kmIda * c.ccd) + c.cc) + ((kmIda * c.ccd) * 0.92);
             
-            // Tratamento de preço da planilha (converte string "1.200,00" para número)
-            let precoPlanilha = row[v.col];
-            if (typeof precoPlanilha === 'string') {
-                precoPlanilha = parseFloat(precoPlanilha.replace(/\./g, '').replace(',', '.'));
-            }
+            let meuPreco = row[v.col];
+            if (typeof meuPreco === 'string') meuPreco = parseFloat(meuPreco.replace(/\./g, '').replace(',', '.'));
             
-            const vLitro = precoPlanilha / v.vol;
-
             html += `
                 <div class="item">
                     <div>
                         <span class="v-nome">${v.nome}</span>
-                        <span class="v-antt">Mínimo ANTT: R$ ${vAntt.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
+                        <span class="v-antt">ANTT: R$ ${vAntt.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
                     </div>
                     <div class="v-prices">
-                        <span class="price-final">R$ ${precoPlanilha.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
-                        <span class="v-litro">R$ ${vLitro.toFixed(3)}/L</span>
-                        ${precoPlanilha < vAntt ? '<span class="alerta">Abaixo da Lei</span>' : ''}
+                        <span class="price-final">R$ ${meuPreco.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
+                        <span class="v-litro">R$ ${(meuPreco / v.vol).toFixed(3)}/L</span>
+                        ${meuPreco < vAntt ? '<span class="alerta">Abaixo da Lei</span>' : ''}
                     </div>
                 </div>`;
         });
         document.getElementById('lista').innerHTML = html;
     }
 };
-
 window.onload = app.init;
-</script>
-</body>
-</html>
