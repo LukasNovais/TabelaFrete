@@ -3,74 +3,97 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calculador de Fretes Pro</title>
+    <title>Calculador de Frete Pro - Funções Permanentes</title>
     <style>
-        :root { --blue: #004a99; --orange: #f39c12; --text: #1a1a1a; --gray: #5f6368; }
-        body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; margin: 0; padding: 15px; color: var(--text); }
-        .card { max-width: 600px; margin: auto; background: white; padding: 25px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
-        label { font-size: 11px; font-weight: 800; color: var(--gray); text-transform: uppercase; display: block; margin-bottom: 5px; }
-        select, input { width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 10px; font-size: 16px; margin-bottom: 20px; outline: none; }
+        :root { --blue: #004a99; --orange: #f39c12; --bg: #f4f7f6; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 15px; }
+        .card { max-width: 650px; margin: auto; background: white; padding: 25px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        label { font-size: 11px; font-weight: 800; color: #666; text-transform: uppercase; display: block; margin-bottom: 5px; }
+        select, input { width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 10px; font-size: 16px; margin-bottom: 20px; outline: none; box-sizing: border-box; }
         .km-panel { background: var(--blue); color: white; padding: 15px; border-radius: 12px; text-align: center; margin-bottom: 20px; display: none; }
         .item { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid #eee; }
-        .v-nome { font-weight: 700; font-size: 18px; }
+        .v-nome { font-weight: 700; font-size: 18px; color: #1a1a1a; }
         .v-antt { font-size: 11px; color: var(--orange); font-weight: 700; display: block; }
-        .price-final { font-size: 22px; font-weight: 800; display: block; }
-        .v-litro { font-size: 12px; color: var(--gray); font-weight: 500; }
+        .price-final { font-size: 22px; font-weight: 800; color: #1a1a1a; display: block; }
+        .v-litro { font-size: 12px; color: #5f6368; font-weight: 500; }
         .alerta { color: #d93025; font-size: 10px; font-weight: 900; text-transform: uppercase; }
     </style>
 </head>
 <body>
 <div class="card">
-    <div style="text-align:center; margin-bottom:20px;">
-        <h2 style="color:var(--blue); margin:0;">Calculador de Fretes</h2>
-        <small id="status" style="color:#999">Conectando...</small>
-    </div>
-    <label>Cidade Destino</label>
-    <select id="selCidade" onchange="app.porCidade(this.value)"><option>Carregando cidades...</option></select>
+    <h2 style="color:var(--blue); text-align:center; margin-top:0;">Calculador de Fretes</h2>
     
-    <div id="displayKM" class="km-panel">Total: <span id="kmTotal" style="font-size:24px; font-weight:900;">0</span> KM</div>
+    <label>Cidade Destino</label>
+    <select id="selCidade" onchange="app.porCidade(this.value)"><option>Carregando...</option></select>
+    
+    <label>KM Ida (Manual)</label>
+    <input type="number" id="kmMan" placeholder="Digite o KM..." oninput="app.porKm(this.value)">
+
+    <div id="displayKM" class="km-panel">Total Ida + Volta: <span id="kmTotal" style="font-size:24px; font-weight:900;">0</span> KM</div>
     <div id="lista"></div>
 </div>
 
 <script>
-const api = 'https://script.google.com/macros/s/AKfycbzozx1Rg-tJMByOaFnzOLZ2IecM8IOTnltXbjppD2K3Bl9yVS6kP0QuNpskQECExxIt/exec';
+const api = 'https://script.google.com/macros/s/AKfycbw_UAfJGiMh9-5Itnah3VF99TKCjXuxf00h8skugGP1GtXyrgXNhFFZ9PZK0Gi8nf-u/exec';
 let base = { cidades: [], antt: {} };
 
 const app = {
     init: () => {
-        const script = document.createElement('script');
-        script.src = `${api}?callback=app.setup`;
-        document.body.appendChild(script);
+        const s = document.createElement('script');
+        s.src = `${api}?callback=app.setup`;
+        document.body.appendChild(s);
     },
     setup: (data) => {
         base = data;
-        document.getElementById('status').innerText = "Sincronizado";
-        const s = document.getElementById('selCidade');
+        const sel = document.getElementById('selCidade');
+        // FUNÇÃO 1: Ordem Alfabética mantendo índice original
         const ord = base.cidades.map((c, i) => ({ n: c[0], k: c[1], id: i }))
                       .sort((a, b) => String(a.n).localeCompare(String(b.n)));
-        let h = '<option value="">Selecione...</option>';
+        let h = '<option value="">Selecione a Cidade...</option>';
         ord.forEach(x => h += `<option value="${x.id}">${x.n} (${x.k} KM)</option>`);
-        s.innerHTML = h;
+        sel.innerHTML = h;
     },
     porCidade: (id) => {
         if(id === "") return;
+        document.getElementById('kmMan').value = '';
         const row = base.cidades[id];
         app.calc(parseFloat(row[1]), row);
     },
+    porKm: (val) => {
+        if(!val) return;
+        document.getElementById('selCidade').value = '';
+        const km = parseFloat(val);
+        // Busca a linha mais próxima para referenciar os preços
+        const row = base.cidades.reduce((p, c) => Math.abs(c[1]-km) < Math.abs(p[1]-km) ? c : p);
+        app.calc(km, row);
+    },
     calc: (km, row) => {
+        const kmTotal = km * 2; // FUNÇÃO 2: Ida e Volta
         document.getElementById('displayKM').style.display = 'block';
-        document.getElementById('kmTotal').innerText = km * 2;
-        const veiculos = [{n:'Toco',e:2,c:2,v:10000},{n:'Truck',e:3,c:3,v:15000},{n:'Bitruck',e:4,c:4,v:20000},{n:'Carreta',e:5,c:5,v:30000}];
+        document.getElementById('kmTotal').innerText = kmTotal.toLocaleString();
+        
+        // CONFIGURAÇÃO DOS VEÍCULOS (Volume para FUNÇÃO 3)
+        const veiculos = [
+            {n:'Toco', e:2, col:2, vol:10000}, {n:'Truck', e:3, col:3, vol:15000},
+            {n:'Bitruck', e:4, col:4, vol:20000}, {n:'Carreta', e:5, col:5, vol:30000}
+        ];
+        
         let h = '';
         veiculos.forEach(v => {
             const c = base.antt[v.e];
+            // FUNÇÃO 4: Cálculo ANTT (Ida + Volta Vazio 92%)
             const vA = ((km * c.ccd) + c.cc) + ((km * c.ccd) * 0.92);
-            let pP = row[v.c];
+            
+            let pP = row[v.col];
             if(typeof pP === 'string') pP = parseFloat(pP.replace(/\./g,'').replace(',','.'));
+            
+            // FUNÇÃO 3: Valor por Litro
+            const vL = pP / v.vol;
+
             h += `<div class="item">
-                <div><span class="v-nome">${v.n}</span><span class="v-antt">ANTT: R$ ${vA.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span></div>
+                <div><span class="v-nome">${v.n}</span><span class="v-antt">Mínimo ANTT: R$ ${vA.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span></div>
                 <div style="text-align:right"><span class="price-final">R$ ${pP.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
-                <span class="v-litro">R$ ${(pP/v.v).toFixed(3)}/L</span><br>${pP < vA ? '<span class="alerta">Abaixo da Lei</span>' : ''}</div>
+                <span class="v-litro">R$ ${vL.toFixed(3)}/L</span><br>${pP < vA ? '<span class="alerta">Abaixo da Lei</span>' : ''}</div>
             </div>`;
         });
         document.getElementById('lista').innerHTML = h;
