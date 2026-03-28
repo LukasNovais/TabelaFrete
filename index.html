@@ -3,34 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/png" href="LINK_DO_SEU_FAVICON_AQUI.png">
     <title>Calculador de Fretes - Transportadora Pro</title>
     <style>
         :root { --blue: #004a99; --orange: #f39c12; --bg: #f4f7f6; --text-dark: #1a1a1a; --text-gray: #5f6368; }
         body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); margin: 0; padding: 15px; }
         .card { max-width: 650px; margin: auto; background: white; border-radius: 16px; box-shadow: 0 4px 25px rgba(0,0,0,0.1); padding: 25px; }
-        
         .header { display: flex; align-items: center; justify-content: center; gap: 20px; border-bottom: 2px solid #f1f1f1; margin-bottom: 20px; padding-bottom: 15px; }
         .logo-img { max-height: 70px; width: auto; }
-        .header-titles { text-align: left; }
-        
         .input-row { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; }
         .field { flex: 1; min-width: 200px; }
         label { font-size: 11px; font-weight: 800; color: #666; text-transform: uppercase; margin-bottom: 8px; display: block; }
         select, input { width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 16px; box-sizing: border-box; outline: none; }
-        select:focus, input:focus { border-color: var(--blue); }
-
-        .km-panel { background: var(--blue); color: white; padding: 15px; border-radius: 12px; text-align: center; margin-bottom: 25px; }
+        .km-panel { background: var(--blue); color: white; padding: 15px; border-radius: 12px; text-align: center; margin-bottom: 25px; display: none; }
         .km-val { font-size: 28px; font-weight: 900; display: block; }
-
         .table-title { font-size: 13px; font-weight: 800; color: var(--blue); text-transform: uppercase; border-left: 4px solid var(--blue); padding-left: 10px; margin-bottom: 20px; letter-spacing: 0.5px; }
-
         .item { display: flex; justify-content: space-between; align-items: center; padding: 18px 0; border-bottom: 1px solid #f1f1f1; }
         .v-nome { font-weight: 600; font-size: 18px; color: var(--text-dark); }
         .v-antt { font-size: 11px; color: var(--orange); font-weight: 600; text-transform: uppercase; margin-top: 4px; display: block; }
-        
         .v-prices { text-align: right; }
-        .price-final { font-size: 24px; font-weight: 700; letter-spacing: -0.5px; color: var(--text-dark); display: block; }
+        .price-final { font-size: 24px; font-weight: 700; color: var(--text-dark); display: block; }
         .v-litro { font-size: 13px; color: var(--text-gray); font-weight: 500; margin-top: 2px; display: block; }
         .alerta { color: #d93025; font-size: 10px; font-weight: 900; text-transform: uppercase; display: block; margin-top: 4px; }
     </style>
@@ -42,7 +33,7 @@
         <img src="LINK_DA_SUA_LOGOMARCA.png" alt="Logo" class="logo-img">
         <div class="header-titles">
             <h2 style="margin:0; color: var(--blue);">Cálculo de Frete e ANTT</h2>
-            <span id="status" style="font-size: 10px; color: #999;">Sincronizando dados oficiais...</span>
+            <span id="status" style="font-size: 10px; color: #999;">Sincronizando...</span>
         </div>
     </div>
 
@@ -57,7 +48,7 @@
         </div>
     </div>
 
-    <div id="displayKM" class="km-panel" style="display:none">
+    <div id="displayKM" class="km-panel">
         <span style="font-size: 11px; opacity: 0.8; font-weight: bold; text-transform: uppercase;">Total Ida + Volta</span>
         <span class="km-val"><span id="kmTotal">0</span> KM</span>
     </div>
@@ -83,49 +74,57 @@ let base = { cidades: [], antt: {} };
 
 const app = {
     init: async () => {
-        const r = await fetch(CONFIG.api);
-        base = await r.json();
-        document.getElementById('status').innerText = base.info;
-        app.renderSel();
+        try {
+            const response = await fetch(CONFIG.api);
+            const data = await response.json();
+            if (data.error) throw new Error(data.error);
+            base = data;
+            document.getElementById('status').innerText = base.info || "Sincronizado";
+            app.renderSel();
+        } catch (e) {
+            document.getElementById('selCidade').innerHTML = '<option>Erro ao carregar dados</option>';
+            console.error(e);
+        }
     },
 
     renderSel: () => {
-        const s = document.getElementById('selCidade');
-        s.innerHTML = '<option value="">Selecione a Cidade...</option>';
+        const select = document.getElementById('selCidade');
+        if (!base.cidades || base.cidades.length === 0) return;
 
-        const cidadesOrdenadas = base.cidades
-            .map((cidade, index) => ({ dados: cidade, indexOriginal: index }))
-            .sort((a, b) => a.dados[0].localeCompare(b.dados[0]));
+        // Mapeia índices originais antes de ordenar para não quebrar o cálculo
+        const listaParaSelect = base.cidades.map((c, i) => ({ nome: c[0], km: c[1], id: i }));
+        listaParaSelect.sort((a, b) => String(a.nome).localeCompare(String(b.nome)));
 
-        cidadesOrdenadas.forEach(item => {
-            const o = document.createElement('option');
-            o.value = item.indexOriginal; 
-            o.innerText = `${item.dados[0]} (${item.dados[1]} KM)`;
-            s.appendChild(o);
+        let options = '<option value="">Selecione a Cidade...</option>';
+        listaParaSelect.forEach(item => {
+            options += `<option value="${item.id}">${item.nome} (${item.km} KM)</option>`;
         });
+        select.innerHTML = options;
     },
 
-    porCidade: (i) => {
-        if(i === "") return;
+    porCidade: (id) => {
+        if (id === "") return;
         document.getElementById('kmMan').value = '';
-        app.calcular(parseFloat(base.cidades[i][1]), base.cidades[i]);
+        const cidade = base.cidades[id];
+        app.calcular(parseFloat(cidade[1]), cidade);
     },
 
-    porKm: (km) => {
-        if(!km) return;
+    porKm: (val) => {
+        const kmIda = parseFloat(val);
+        if (!kmIda) return;
         document.getElementById('selCidade').value = '';
-        const kmIda = parseFloat(km);
-        const linhaProxima = base.cidades.reduce((prev, curr) => 
+        // Busca linha com KM mais próximo
+        const row = base.cidades.reduce((prev, curr) => 
             Math.abs(curr[1] - kmIda) < Math.abs(prev[1] - kmIda) ? curr : prev
         );
-        app.calcular(kmIda, linhaProxima);
+        app.calcular(kmIda, row);
     },
 
     calcular: (kmIda, row) => {
         const kmTotal = kmIda * 2;
         document.getElementById('displayKM').style.display = 'block';
         document.getElementById('resultadoContainer').style.display = 'block';
-        document.getElementById('kmTotal').innerText = kmTotal.toLocaleString();
+        document.getElementById('kmTotal').innerText = kmTotal.toLocaleString('pt-BR');
 
         let html = '';
         CONFIG.veiculos.forEach(v => {
@@ -150,6 +149,7 @@ const app = {
         document.getElementById('lista').innerHTML = html;
     }
 };
+
 window.onload = app.init;
 </script>
 </body>
