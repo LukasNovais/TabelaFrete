@@ -91,18 +91,22 @@ const app = {
     },
 
     renderSel: () => {
-        const s = document.getElementById('selCidade');
-        s.innerHTML = '<option value="">Selecione a Cidade...</option>';
+    const s = document.getElementById('selCidade');
+    s.innerHTML = '<option value="">Selecione a Cidade...</option>';
 
-        // ESTA É A LINHA QUE ORDENA:
-        base.cidades.sort((a, b) => a[0].localeCompare(b[0]));
-        
-        base.cidades.forEach((c, i) => {
-            const o = document.createElement('option');
-            o.value = i; o.innerText = `${c[0]} (${c[1]} KM)`;
-            s.appendChild(o);
-        });
-    },
+    // Criamos uma cópia mapeada para não perder o índice original da planilha
+    const cidadesOrdenadas = base.cidades
+        .map((cidade, index) => ({ dados: cidade, indexOriginal: index }))
+        .sort((a, b) => a.dados[0].localeCompare(b.dados[0]));
+
+    cidadesOrdenadas.forEach(item => {
+        const o = document.createElement('option');
+        // O valor (value) continua sendo o índice real da planilha para o cálculo funcionar
+        o.value = item.indexOriginal; 
+        o.innerText = `${item.dados[0]} (${item.dados[1]} KM)`;
+        s.appendChild(o);
+    });
+},
 
     porCidade: (i) => {
         if(!i) return;
